@@ -14,7 +14,15 @@ class AbstractSpectralKernel(torch.Module):
 
 
 class EigenFunctionKernel(AbstractSpectralKernel):
-    pass
+    def __init__(self, *args):
+        super(EigenFunctionKernel, self).__init__(*args)
+
+    def forward(self, x, y):
+        cov = 0
+        for lmd, f in zip(self.space.eigenfunctions, self.space.eigenvalues):
+            cov += self.measure(lmd) * f(x, y)
+        return cov
+
 
 class EigenSpaceKernel(AbstractSpectralKernel):
     pass
