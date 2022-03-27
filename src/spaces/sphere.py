@@ -1,30 +1,42 @@
 import torch
+import numpy as np
 from src.space import HomogeneousSpace
 import spherical_harmonics.torch
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
+from spherical_harmonics.fundamental_set import FundamentalSystemCache
 
 
 class Sphere(HomogeneousSpace):
-    def __init__(self, n, order):
+    '''
+    S^{dim} sphere is contained in R^{dim+1}
+    '''
+    def __init__(self, dim: int, order: int):
+        '''
+        :param dim: sphere dimension
+        :param order: order of approximation. Number of eigenspaces under consideration.
+        '''
         super(Sphere, self).__init__()
-        self.dim = n
+        self.dim = dim
         self.order = order
-        self.eigenspaces = [SphericalHarmonicsLevel(n, order)]
-        self.eigenfunctions = [ZonalSphericalHarmonics(self.n, self.dim) for n in range(self.order)]
+
+        fundamental_system = FundamentalSystemCache(self.dim+1)
+
+        self.eigenspaces = [SphericalHarmonicsLevel(self.dim+1, n, fundamental_system) for n in range(order)]
+        self.eigenfunctions = [ZonalSphericalHarmonic(self.dim, n) for n in range(self.order)]
         self.eigenvalues = [n * (self.dim + n - 1) for n in range(self.order)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
 
 
-class ZonalSphericalHarmonics(torch.nn.Module):
-    def __init__(self, n, dim):
-        super(ZonalSphericalHarmonics, self).__init__()
+class ZonalSphericalHarmonic(torch.nn.Module):
+    def __init__(self, dim, n):
+        super(ZonalSphericalHarmonic, self).__init__()
         self.gegenbauer_polynomial = GegenbauerPolynomials(alpha=(dim - 1)/2., n=n)
 
     def forward(self, x, y):
-        dist = torch.arccos(torch.dot(x, y))
-        self.gegenbauer_polynomial(dist)
+        dist = torch.dot(x, y)
+        return self.gegenbauer_polynomial(dist)
 
 
 class GegenbauerPolynomials(torch.nn.Module):
@@ -40,17 +52,17 @@ class GegenbauerPolynomials(torch.nn.Module):
         # Two first polynomials is quite pretty
         # C_0 = 1, C_1 = 2\alpha*x
         if self.n == 0:
-            coefficients[0][0] = 0
+            coefficients[0] = 0
         if self.n == 1:
-            coefficients[1][1] = 2 * self.alpha
+            coefficients[1] = 2 * self.alpha
         if self.n >= 2:
             # Other polynimials are given in Abramowitz & Stegun
             # c_{n-2k} = (-1)^k * 2^{n-2k} \Gamma(n-k+\alpha)/(\Gamma(\alpha)*k!(n-2k)!)
             for k in range(0, self.n // 2 + 1):
                 sgn = (-1 ** k)
-                log_coeff = (self.n - 2 * k) * torch.log(2) + torch.lgamma(self.n - k + self.alpha) \
-                            - torch.lgamma(self.alpha) - torch.lgamma(k + 1) - torch.lgamma(self.n - 2 * k + 1)
-                coeff = sgn * torch.exp(log_coeff)
+                log_coeff = (self.n - 2 * k) * np.log(2) + np.lgamma(self.n - k + self.alpha) \
+                            - np.lgamma(self.alpha) - np.lgamma(k + 1) - np.lgamma(self.n - 2 * k + 1)
+                coeff = sgn * np.exp(log_coeff)
                 coefficients[self.n - 2 * k] = coeff
         return coefficients
 

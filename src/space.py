@@ -1,7 +1,7 @@
 import torch
 
 
-class AbstractSpace(torch.Module):
+class AbstractSpace(torch.nn.Module):
     '''
     Base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space
     Contains
@@ -14,7 +14,7 @@ class AbstractSpace(torch.Module):
         self.order = None
 
         self.eigenfunctions = []
-        self.characters = []
+        self.eigenspaces = []
         self.eigenvalues = []
 
     def dist(self, x, y):
