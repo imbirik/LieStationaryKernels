@@ -9,8 +9,8 @@ dtype = torch.double
 
 class TestSphere(unittest.TestCase):
     def test_sq_exp_kernel(self) -> None:
-        dim = 5
-        order = 2
+        dim = 8
+        order = 5
         space = Sphere(dim, order=order)
 
         lengthscale = 1.0
@@ -24,7 +24,7 @@ class TestSphere(unittest.TestCase):
         x, y = x/torch.norm(x, dim=1, keepdim=True), y/torch.norm(y, dim=1, keepdim=True)
         cov_func = sq_exp_func_kernel(x, y)
         cov_space = sq_exp_space_kernel(x, y)
-        assert (torch.allclose(cov_space, cov_func))
+        self.assertTrue(torch.allclose(cov_space, cov_func))
 
     def test_vmap(self):
         class Dot(torch.nn.Module):
@@ -36,6 +36,6 @@ class TestSphere(unittest.TestCase):
 
         batched_dot = functorch.vmap(functorch.vmap(Dot()))
         x, y = torch.randn(10, 3, 5), torch.randn(10, 3, 5)
-        print(batched_dot(x, y).shape)
+        self.assertTrue(torch.allclose(torch.einsum('abi,abi->ab', x, y), batched_dot(x, y)))
 
 

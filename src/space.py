@@ -25,6 +25,9 @@ class AbstractSpace(torch.nn.Module):
         # Using group structure computes xy^{-1}
         pass
 
+    def rand(self, n=1):
+        # returns random element with respect to haar measure
+        pass
 
 class LieGroup(AbstractSpace):
     pass

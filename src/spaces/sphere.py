@@ -1,9 +1,13 @@
 import torch
 import numpy as np
+from scipy.special import loggamma
+
 from src.space import HomogeneousSpace
 import spherical_harmonics.torch
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
+
+dtype = torch.double
 
 
 class Sphere(HomogeneousSpace):
@@ -21,22 +25,34 @@ class Sphere(HomogeneousSpace):
 
         fundamental_system = FundamentalSystemCache(self.dim+1)
 
-        self.eigenspaces = [SphericalHarmonicsLevel(self.dim+1, n, fundamental_system) for n in range(order)]
-        self.eigenfunctions = [ZonalSphericalHarmonic(self.dim, n) for n in range(self.order)]
-        self.eigenvalues = [n * (self.dim + n - 1) for n in range(self.order)]
+        self.eigenspaces = [SphericalHarmonicsLevel(self.dim+1, n, fundamental_system) for n in range(1, order+1)]
+        self.eigenfunctions = [ZonalSphericalHarmonic(self.dim, n) for n in range(1, self.order+1)]
+        self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order+1)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
+
+    def rand(self, n=1):
+        x = torch.randn(n, self.dim + 1, dtype=dtype)
+        x = x / torch.norm(x, dim=1, keepdim=True)
+        return x
 
 
 class ZonalSphericalHarmonic(torch.nn.Module):
     def __init__(self, dim, n):
         super(ZonalSphericalHarmonic, self).__init__()
-        self.gegenbauer_polynomial = GegenbauerPolynomials(alpha=(dim - 1)/2., n=n)
+        self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1)/2., n=n)
+
+        if n == 0:
+            self.const = torch.tensor([1.])
+        else:
+            log_d_n = np.log(2*n+dim-1) + loggamma(n+dim-1) - loggamma(dim) - loggamma(n+1)
+            log_const = log_d_n + loggamma((dim+1)/2) - np.log(np.pi)*(dim+1)/2
+            self.const = torch.tensor([np.exp(log_const)/2/self.gegenbauer(1)])
 
     def forward(self, x, y):
         dist = torch.dot(x, y)
-        return self.gegenbauer_polynomial(dist)
+        return self.gegenbauer(dist) * self.const[0]
 
 
 class GegenbauerPolynomials(torch.nn.Module):
@@ -59,9 +75,9 @@ class GegenbauerPolynomials(torch.nn.Module):
             # Other polynimials are given in Abramowitz & Stegun
             # c_{n-2k} = (-1)^k * 2^{n-2k} \Gamma(n-k+\alpha)/(\Gamma(\alpha)*k!(n-2k)!)
             for k in range(0, self.n // 2 + 1):
-                sgn = (-1 ** k)
-                log_coeff = (self.n - 2 * k) * np.log(2) + np.lgamma(self.n - k + self.alpha) \
-                            - np.lgamma(self.alpha) - np.lgamma(k + 1) - np.lgamma(self.n - 2 * k + 1)
+                sgn = (-1) ** k
+                log_coeff = (self.n - 2 * k) * np.log(2) + loggamma(self.n - k + self.alpha) \
+                            - loggamma(self.alpha) - loggamma(k + 1) - loggamma(self.n - 2 * k + 1)
                 coeff = sgn * np.exp(log_coeff)
                 coefficients[self.n - 2 * k] = coeff
         return coefficients
