@@ -6,6 +6,7 @@ from src.space import HomogeneousSpace
 import spherical_harmonics.torch
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
+from spherical_harmonics.spherical_harmonics import num_harmonics
 
 dtype = torch.double
 
@@ -14,6 +15,7 @@ class Sphere(HomogeneousSpace):
     '''
     S^{dim} sphere is contained in R^{dim+1}
     '''
+
     def __init__(self, dim: int, order: int):
         '''
         :param dim: sphere dimension
@@ -23,32 +25,46 @@ class Sphere(HomogeneousSpace):
         self.dim = dim
         self.order = order
 
-        fundamental_system = FundamentalSystemCache(self.dim+1)
+        fundamental_system = FundamentalSystemCache(self.dim + 1)
 
-        self.eigenspaces = [SphericalHarmonicsLevel(self.dim+1, n, fundamental_system) for n in range(1, order+1)]
-        self.eigenfunctions = [ZonalSphericalHarmonic(self.dim, n) for n in range(1, self.order+1)]
-        self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order+1)]
+        self.eigenspaces = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, order + 1)]
+        self.eigenfunctions = [ZonalSphericalFunctions(self.dim, n) for n in range(1, self.order + 1)]
+        self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
+        self.eigenspace_dims = [num_harmonics(self.dim + 1, n) for n in range(1, order + 1)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
 
     def rand(self, n=1):
+        if n == 0:
+            return None
         x = torch.randn(n, self.dim + 1, dtype=dtype)
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
 
 
-class ZonalSphericalHarmonic(torch.nn.Module):
+class NormalizedSphericalFunctions(torch.nn.Module):
+    def __init__(self, dimension, degree, fundamental_system):
+        super(NormalizedSphericalFunctions, self).__init__()
+        self.spherical_functions = SphericalHarmonicsLevel(dimension + 1, degree, fundamental_system)
+        # 2 * S_{dim}/dim^2
+        self.const = np.sqrt(2/(dimension+1)) *\
+                     np.exp((np.log(np.pi) * (dimension + 1) / 2 - loggamma((dimension + 1) / 2)) / 2)
+
+    def forward(self, x):
+        return self.spherical_functions(x)
+
+
+class ZonalSphericalFunctions(torch.nn.Module):
     def __init__(self, dim, n):
-        super(ZonalSphericalHarmonic, self).__init__()
-        self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1)/2., n=n)
+        super(ZonalSphericalFunctions, self).__init__()
+        self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
 
         if n == 0:
             self.const = torch.tensor([1.])
         else:
             log_d_n = np.log(2*n+dim-1) + loggamma(n+dim-1) - loggamma(dim) - loggamma(n+1)
-            log_const = log_d_n + loggamma((dim+1)/2) - np.log(np.pi)*(dim+1)/2
-            self.const = torch.tensor([np.exp(log_const)/2/self.gegenbauer(1)])
+            self.const = torch.tensor([np.exp(log_d_n)/self.gegenbauer(1)])
 
     def forward(self, x, y):
         dist = torch.dot(x, y)

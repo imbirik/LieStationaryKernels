@@ -17,6 +17,8 @@ class AbstractSpace(torch.nn.Module):
         self.eigenspaces = []
         self.eigenvalues = []
 
+        self.eigenspace_dims = []
+
     def dist(self, x, y):
         # compute distance between x and y
         pass
@@ -29,11 +31,17 @@ class AbstractSpace(torch.nn.Module):
         # returns random element with respect to haar measure
         pass
 
+    def rand_phase(self, n=1):
+        pass
+
+
 class LieGroup(AbstractSpace):
     pass
 
+
 class HomogeneousSpace(AbstractSpace):
     pass
+
 
 class SymmetricSpace(AbstractSpace):
     pass
