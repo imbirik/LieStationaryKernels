@@ -12,16 +12,16 @@ class KarhunenLoeveExpansion(torch.nn.Module):
         super(KarhunenLoeveExpansion, self).__init__()
 
         if approx_order is None:
-            approx_order = sum(kernel.space.eigenspace_dims)
+            approx_order = sum(kernel.space.eigenspaces_dims)
 
-        if sum(kernel.space.eigenspace_dims) < approx_order:
+        if sum(kernel.space.eigenspaces_dims) < approx_order:
             raise ValueError("approx_order must be lower or equal then number of prepared eigenfunctions")
 
         self.num_eigenspaces = 0
         new_order = 0
 
         while new_order < approx_order:
-            new_order += kernel.space.eigenspace_dims[self.num_eigenspaces]
+            new_order += kernel.space.eigenspaces_dims[self.num_eigenspaces]
             self.num_eigenspaces += 1
 
         if self.num_eigenspaces != approx_order:

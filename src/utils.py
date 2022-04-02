@@ -14,7 +14,46 @@ def cartesian_prod(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
 
     return x1_, x2_
 
-if __name__ == "__main__":
-    x1 = torch.reshape(torch.arange(18), (6, 3))
-    x2 = torch.reshape(torch.arange(12), (4, 3))
-    cartesian_prod(x1, x2)
+
+def fixed_length_partitions(n, L):
+    """
+    https://www.ics.uci.edu/~eppstein/PADS/IntegerPartitions.py
+    Integer partitions of n into L parts, in colex order.
+    The algorithm follows Knuth v4 fasc3 p38 in rough outline;
+    Knuth credits it
+     to Hindenburg, 1779.
+    """
+
+    # guard against special cases
+    if L == 0:
+        if n == 0:
+            yield []
+        return
+    if L == 1:
+        if n > 0:
+            yield [n]
+        return
+    if n < L:
+        return
+
+    partition = [n - L + 1] + (L - 1) * [1]
+    while True:
+        yield partition.copy()
+        if partition[0] - 1 > partition[1]:
+            partition[0] -= 1
+            partition[1] += 1
+            continue
+        j = 2
+        s = partition[0] + partition[1] - 1
+        while j < L and partition[j] >= partition[0] - 1:
+            s += partition[j]
+            j += 1
+        if j >= L:
+            return
+        partition[j] = x = partition[j] + 1
+        j -= 1
+        while j > 0:
+            partition[j] = x
+            s -= x
+            j -= 1
+        partition[0] = s

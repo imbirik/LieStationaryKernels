@@ -16,8 +16,7 @@ class AbstractSpace(torch.nn.Module):
         self.eigenfunctions = []
         self.eigenspaces = []
         self.eigenvalues = []
-
-        self.eigenspace_dims = []
+        self.eigenspaces_dims = []
 
     def dist(self, x, y):
         # compute distance between x and y

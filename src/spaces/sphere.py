@@ -30,7 +30,7 @@ class Sphere(HomogeneousSpace):
         self.eigenspaces = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, order + 1)]
         self.eigenfunctions = [ZonalSphericalFunctions(self.dim, n) for n in range(1, self.order + 1)]
         self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
-        self.eigenspace_dims = [num_harmonics(self.dim + 1, n) for n in range(1, order + 1)]
+        self.eigenspaces_dims = [num_harmonics(self.dim + 1, n) for n in range(1, order + 1)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
