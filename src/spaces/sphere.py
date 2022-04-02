@@ -28,7 +28,7 @@ class Sphere(HomogeneousSpace):
         fundamental_system = FundamentalSystemCache(self.dim + 1)
 
         self.eigenspaces = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, order + 1)]
-        self.eigenfunctions = [ZonalSphericalFunctions(self.dim, n) for n in range(1, self.order + 1)]
+        self.eigenfunctions = [ZonalSphericalFunction(self.dim, n) for n in range(1, self.order + 1)]
         self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
         self.eigenspaces_dims = [num_harmonics(self.dim + 1, n) for n in range(1, order + 1)]
 
@@ -55,9 +55,9 @@ class NormalizedSphericalFunctions(torch.nn.Module):
         return self.spherical_functions(x)
 
 
-class ZonalSphericalFunctions(torch.nn.Module):
+class ZonalSphericalFunction(torch.nn.Module):
     def __init__(self, dim, n):
-        super(ZonalSphericalFunctions, self).__init__()
+        super(ZonalSphericalFunction, self).__init__()
         self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
 
         if n == 0:

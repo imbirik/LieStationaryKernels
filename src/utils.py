@@ -4,13 +4,14 @@ import torch
 def cartesian_prod(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
     '''
     Cartesian product of two tensors
-    :param x1: tensor of the shape [a,x]
-    :param x2: tensor of the shape [b,x]
-    :return: tensor of the shape [a,b,2,x]
+    :param x1: tensor of the shape [a,x1,x2,...]
+    :param x2: tensor of the shape [b,x1,x2,...]
+    :return: 2 tensors of the shape [a,b,x1,x2,...]
     '''
-
-    x1_ = torch.tile(x1[..., None, :], (1, x2.shape[0], 1))  # (N, M, dim+1)
-    x2_ = torch.tile(x2[None], (x1.shape[0], 1, 1))  # (N, M, dim+1)
+    x1_shape = [1, x2.shape[0]] + [1] * (len(x1.shape)-1)
+    x2_shape = [x1.shape[0], 1] + [1] * (len(x2.shape)-1)
+    x1_ = torch.tile(x1[:, None, ...], x1_shape)  # (N, M, dim+1)
+    x2_ = torch.tile(x2[None, :, ...], x2_shape)  # (N, M, dim+1)
 
     return x1_, x2_
 
@@ -57,3 +58,10 @@ def fixed_length_partitions(n, L):
             s -= x
             j -= 1
         partition[0] = s
+
+if __name__ == "__main__":
+    x = torch.reshape(torch.arange(2 * 3 * 4), (2, 3, 4))
+    y = torch.reshape(torch.arange(3 * 3 * 4), (3, 3, 4))
+    x1, y1 = cartesian_prod(x, y)
+    print(x1, x1.shape)
+    print(y1, y1.shape)

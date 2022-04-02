@@ -116,9 +116,9 @@ class SOCharacter(torch.nn.Module):
 
     def torus_embed(self, x):
         eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, :, 0]
-        eigv = torch.gather(eigv, dim=1, index=sorted_ind)
-        gamma = eigv[:, 0:-1:2]
+        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, 0]
+        eigv = torch.gather(eigv, dim=0, index=sorted_ind)
+        gamma = eigv[0:-1:2]
         return gamma
 
     def xi0(self, qs, gamma):
@@ -129,7 +129,7 @@ class SOCharacter(torch.nn.Module):
         a = torch.stack([torch.pow(gamma, q) - torch.pow(gamma, -q) for q in qs], dim=-1)
         return torch.det(a)
 
-    def forward(self, x):
+    def chi(self, x):
         eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
         gamma = self.torus_embed(x)+eps
 
@@ -147,3 +147,6 @@ class SOCharacter(torch.nn.Module):
                 sign = math.copysign(1, self.signature[-1])
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
                        self.xi0(list(reversed(range(self.rank))), gamma)
+
+    def forward(self, x, y):
+        return self.chi(x @ y.T)
