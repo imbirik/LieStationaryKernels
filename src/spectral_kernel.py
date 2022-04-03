@@ -6,7 +6,7 @@ from src.spectral_measure import AbstractSpectralMeasure
 from src.space import AbstractSpace
 from src.utils import cartesian_prod
 
-
+dtype = torch.double
 
 class AbstractSpectralKernel(torch.nn.Module):
     def __init__(self, measure: AbstractSpectralMeasure, space: AbstractSpace):
@@ -27,7 +27,7 @@ class EigenFunctionKernel(AbstractSpectralKernel):
 
     def forward(self, x, y, normalize=True):
         x1, y1 = cartesian_prod(x, y)
-        cov = torch.zeros(len(x), len(y))
+        cov = torch.zeros(len(x), len(y), dtype=dtype)
         for lmd, f in zip(self.space.eigenvalues, self.space.eigenfunctions):
             cov += self.measure(lmd) * vmap(vmap(f))(x1, y1)
         if normalize:

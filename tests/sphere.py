@@ -23,9 +23,8 @@ class TestSphere(unittest.TestCase):
         self.space_kernel = EigenFunctionKernel(measure=self.measure, space=self.space)
         self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=100000)
 
-        n, m = 10, 20
-        x, y = torch.randn(n, self.dim + 1, dtype=dtype), torch.randn(m, self.dim + 1, dtype=dtype)
-        self.x, self.y = x / torch.norm(x, dim=1, keepdim=True), y / torch.norm(y, dim=1, keepdim=True)
+        self.n, self.m = 10, 20
+        self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
 
     def test_kernel(self) -> None:
         cov_func = self.func_kernel(self.x, self.y)
@@ -36,6 +35,10 @@ class TestSphere(unittest.TestCase):
         cov_func = self.func_kernel(self.x, self.y)
         cov_prior = self.sampler._cov(self.x, self.y)
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=1e-2))
+
+    def test_sampler(self):
+        true_ans = torch.ones(self.n, dtype=dtype)
+        self.assertTrue(torch.allclose(functorch.vmap(torch.dot)(self.x, self.x), true_ans))
 
     def test_harmonics(self):
         n = 100000

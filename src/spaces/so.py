@@ -34,7 +34,8 @@ class SO(LieGroup):
             raise ValueError("dimensions 1,2,4 are not supported")
 
         self.signatures, self.eigenvalues, self.eigenspaces_dims = self._generate_signatures(self.order)
-        self.eigenfunctions = [SOCharacter(self.dim, signature) for signature in self.signatures]
+        self.eigenfunctions = [SOCharacter(self.dim, signature, eigen_dim)
+                               for signature, eigen_dim in zip(self.signatures, self.eigenspaces_dims)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -43,12 +44,12 @@ class SO(LieGroup):
         return x @ y.T
 
     def rand(self, n=1):
-        h = torch.randn((n, self.dim, self.dim), dtype=torch.double)
+        h = torch.randn((n, self.dim, self.dim), dtype=dtype)
         q, r = torch.linalg.qr(h)
         diag_sign = torch.diag_embed(torch.diagonal(torch.sign(r), dim1=-2, dim2=-1))
         q = torch.bmm(q, diag_sign)
         det_sign = torch.sign(torch.det(q))
-        sign_matirx = torch.eye(self.dim, dtype=torch.double).reshape((-1, self.dim, self.dim)).repeat((n, 1, 1))
+        sign_matirx = torch.eye(self.dim, dtype=dtype).reshape((-1, self.dim, self.dim)).repeat((n, 1, 1))
         sign_matirx[:, 0, 0] = det_sign
         q = q @ sign_matirx
         return q
@@ -108,15 +109,17 @@ class SO(LieGroup):
 
 
 class SOCharacter(torch.nn.Module):
-    def __init__(self, dim, signature):
+    def __init__(self, dim, signature, eigen_dim):
         super(SOCharacter, self).__init__()
         self.dim = dim
         self.signature = signature
         self.rank = dim // 2
+        self.eigen_dim = eigen_dim
 
     def torus_embed(self, x):
+        #TODO :check
         eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, 0]
+        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=0).indices[:, 0]
         eigv = torch.gather(eigv, dim=0, index=sorted_ind)
         gamma = eigv[0:-1:2]
         return gamma
@@ -131,8 +134,7 @@ class SOCharacter(torch.nn.Module):
 
     def chi(self, x):
         eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
-        gamma = self.torus_embed(x)+eps
-
+        gamma = self.torus_embed(x)
         if self.dim % 2:
             qs = [pk + self.rank - k - 1 / 2 for k, pk in enumerate(self.signature)]
             return self.xi1(qs, gamma) / \
@@ -149,4 +151,4 @@ class SOCharacter(torch.nn.Module):
                        self.xi0(list(reversed(range(self.rank))), gamma)
 
     def forward(self, x, y):
-        return self.chi(x @ y.T)
+        return self.eigen_dim * self.chi(x @ y.T).real
