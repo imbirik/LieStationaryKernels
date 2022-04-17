@@ -22,7 +22,7 @@ class TestSO(unittest.TestCase):
 
         self.func_kernel = EigenFunctionKernel(measure=self.measure, space=self.space)
         self.space_kernel = EigenFunctionKernel(measure=self.measure, space=self.space)
-        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=100000)
+        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=1000000)
 
         self.n, self.m = 20, 20
         self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
@@ -46,12 +46,14 @@ class TestSO(unittest.TestCase):
         return eigen_embedding
 
     def test_eigenfunction(self) -> None:
-        x, y = self.space.rand(1), self.space.rand(1)
+        x, y = self.space.rand(2), self.space.rand(2)
+        y = x
         x_, y_ = cartesian_prod(x, y)
         for f in self.space.eigenfunctions:
             cov1 = f(x_, y_)
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
-            cov2 = embed_x @ embed_y.T
-            print(cov1/cov2)
+            cov2 = (embed_x @ torch.conj(embed_y.T))
+            print(cov2)
+            print(cov1)
 
         #self.assertTrue(torch.allclose(cov1, cov2))

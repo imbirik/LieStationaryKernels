@@ -86,11 +86,10 @@ class RandomPhaseApproximation(torch.nn.Module):
     def forward(self, x):  # [N, ...]
         embedding = self.make_embedding(x)
         random_embedding = torch.einsum('nm,m->n', embedding, self.weights)  # [len(x), phase_order* approx_order, ...]
-        return random_embedding
-
+        return random_embedding.real
 
     def _cov(self, x, y):
         x_embed, y_embed = self.make_embedding(x), self.make_embedding(y)
-        return x_embed @ y_embed.T
+        return (x_embed @ torch.conj(y_embed.T)).real
 
 
