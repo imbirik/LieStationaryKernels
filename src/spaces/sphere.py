@@ -4,6 +4,7 @@ from scipy.special import loggamma
 
 from src.space import HomogeneousSpace
 import spherical_harmonics.torch
+from functorch import vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics
@@ -59,14 +60,15 @@ class ZonalSphericalFunction(torch.nn.Module):
     def __init__(self, dim, n):
         super(ZonalSphericalFunction, self).__init__()
         self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
+        self.forward = vmap(vmap(self._forward))
 
         if n == 0:
             self.const = torch.tensor([1.])
         else:
             log_d_n = np.log(2*n+dim-1) + loggamma(n+dim-1) - loggamma(dim) - loggamma(n+1)
-            self.const = torch.tensor([np.exp(log_d_n)/self.gegenbauer(1)])
+            self.const = torch.tensor([np.exp(log_d_n)/self.gegenbauer(1.0)])
 
-    def forward(self, x, y):
+    def _forward(self, x, y):
         dist = torch.dot(x, y)
         return self.gegenbauer(dist) * self.const[0]
 
@@ -77,10 +79,10 @@ class GegenbauerPolynomials(torch.nn.Module):
         self.alpha = alpha
         self.n = n
         self.coefficients = self.compute_coefficients()
-        self.powers = torch.arange(0., self.n + 1.)
+        self.powers = torch.arange(0., self.n + 1., dtype=dtype)
 
     def compute_coefficients(self):
-        coefficients = torch.zeros(self.n + 1)
+        coefficients = torch.zeros(self.n + 1, dtype=dtype)
         # Two first polynomials is quite pretty
         # C_0 = 1, C_1 = 2\alpha*x
         if self.n == 0:

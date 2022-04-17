@@ -119,9 +119,9 @@ class SOCharacter(torch.nn.Module):
     def torus_embed(self, x):
         #TODO :check
         eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=0).indices[:, 0]
-        eigv = torch.gather(eigv, dim=0, index=sorted_ind)
-        gamma = eigv[0:-1:2]
+        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, :, 0]
+        eigv = torch.gather(eigv, dim=1, index=sorted_ind)
+        gamma = eigv[:, 0:-1:2]
         return gamma
 
     def xi0(self, qs, gamma):
@@ -151,4 +151,21 @@ class SOCharacter(torch.nn.Module):
                        self.xi0(list(reversed(range(self.rank))), gamma)
 
     def forward(self, x, y):
-        return self.eigen_dim * self.chi(x @ y.T).real
+        n, m = x.shape[0], y.shape[1] # number of x and y
+        # [n,m,d,d] -> [n*m, d, d]
+        x_flatten = torch.reshape(x, (-1, x.shape[2], x.shape[3]))
+        y_flatten = torch.reshape(y, (-1, y.shape[2], y.shape[3]))
+
+        # [n*m, d, d]
+        x_yT = torch.bmm(x_flatten, torch.transpose(y_flatten, -1, -2))
+        # [n*m, d*d]
+        x_yT_ = torch.reshape(x_yT, (n*m, -1))
+        eye = torch.reshape(torch.torch.eye(self.dim, dtype=dtype).reshape((-1, self.dim*self.dim)), (1, self.dim*self.dim))
+        eyes = eye.repeat(n*m, 1)
+        close_eye = torch.all(torch.isclose(x_yT_, eyes), dim=1)
+
+        chi_flatten = self.eigen_dim * self.chi(x_yT).real
+
+        chi_flatten = torch.where(close_eye, self.eigen_dim * self.eigen_dim * torch.ones_like(chi_flatten), chi_flatten)
+
+        return chi_flatten.reshape(n, m)

@@ -60,7 +60,6 @@ class RandomPhaseApproximation(torch.nn.Module):
         self.weights = self.sample_weights()
         self.phases = self.sample_phases()
 
-
     def sample_weights(self):
         return torch.randn(self.phase_order*self.approx_order)
 
@@ -79,12 +78,12 @@ class RandomPhaseApproximation(torch.nn.Module):
 
             x_, phase_ = cartesian_prod(x, phase)  # [len(x), num_phase, ...]
 
-            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * vmap(vmap(f))(x_, phase_)
+            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(x_, phase_)
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
         return torch.cat(embeddings, dim=1)
 
-    def forward(self, x): # [N, ...]
+    def forward(self, x):  # [N, ...]
         embedding = self.make_embedding(x)
         random_embedding = torch.einsum('nm,m->n', embedding, self.weights)  # [len(x), phase_order* approx_order, ...]
         return random_embedding
