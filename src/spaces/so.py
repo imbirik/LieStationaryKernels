@@ -13,15 +13,16 @@ dtype = torch.double
 
 class SO(LieGroup):
     '''
-    S^{dim} sphere is contained in R^{dim+1}
+    SO(dim), special orthogonal group of degree dim
     '''
 
     def __init__(self, dim: int, order: int):
         '''
-        :param dim: sphere dimension
+        :param dim: dimension of the space
         :param order: order of approximation. Number of eigenspaces under consideration.
         '''
-        super(SO, self).__init__()
+        super().__init__()
+
         self.dim = dim
         self.rank = dim // 2
         self.order = order
@@ -31,11 +32,11 @@ class SO(LieGroup):
             self.rho = np.arange(self.rank)[::-1] + 0.5
 
         if dim <= 2 or dim == 4:
-            raise ValueError("dimensions 1,2,4 are not supported")
+            raise ValueError("Dimensions 1, 2, 4 are not supported")
 
-        self.signatures, self.eigenvalues, self.eigenspaces_dims = self._generate_signatures(self.order)
-        self.eigenfunctions = [SOCharacter(self.dim, signature, eigen_dim)
-                               for signature, eigen_dim in zip(self.signatures, self.eigenspaces_dims)]
+        self.signatures, self.lb_eigenspaces_dims, self.lb_eigenvalues, = self._generate_signatures(self.order)
+        self.lb_eigenbases_sums = [SOCharacter(self.dim, signature, eigen_dim)
+                                   for signature, eigen_dim in zip(self.signatures, self.lb_eigenspaces_dims)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -110,7 +111,7 @@ class SO(LieGroup):
 
 class SOCharacter(torch.nn.Module):
     def __init__(self, dim, signature, eigen_dim):
-        super(SOCharacter, self).__init__()
+        super().__init__()
         self.dim = dim
         self.signature = signature
         self.rank = dim // 2

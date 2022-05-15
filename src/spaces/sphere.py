@@ -4,7 +4,8 @@ from scipy.special import loggamma
 
 from src.space import HomogeneousSpace
 import spherical_harmonics.torch
-from functorch import vmap
+# from functorch import vmap
+from torch import vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics
@@ -16,22 +17,21 @@ class Sphere(HomogeneousSpace):
     '''
     S^{dim} sphere is contained in R^{dim+1}
     '''
-
     def __init__(self, dim: int, order: int):
         '''
         :param dim: sphere dimension
         :param order: order of approximation. Number of eigenspaces under consideration.
         '''
-        super(Sphere, self).__init__()
+        super().__init__()
         self.dim = dim
         self.order = order
 
         fundamental_system = FundamentalSystemCache(self.dim + 1)
 
-        self.eigenspaces = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, order + 1)]
-        self.eigenfunctions = [ZonalSphericalFunction(self.dim, n) for n in range(1, self.order + 1)]
-        self.eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
-        self.eigenspaces_dims = [num_harmonics(self.dim + 1, n) for n in range(1, order + 1)]
+        self.lb_eigenbases = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, self.order + 1)]
+        self.lb_eigenbases_sums = [ZonalSphericalFunction(self.dim, n) for n in range(1, self.order + 1)]
+        self.lb_eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
+        self.lb_eigenspaces_dims = [num_harmonics(self.dim + 1, n) for n in range(1, self.order + 1)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -46,7 +46,7 @@ class Sphere(HomogeneousSpace):
 
 class NormalizedSphericalFunctions(torch.nn.Module):
     def __init__(self, dimension, degree, fundamental_system):
-        super(NormalizedSphericalFunctions, self).__init__()
+        super().__init__()
         self.spherical_functions = SphericalHarmonicsLevel(dimension + 1, degree, fundamental_system)
         # 2 * S_{dim}/dim^2
         self.const = np.sqrt(2/(dimension+1)) *\
@@ -58,7 +58,7 @@ class NormalizedSphericalFunctions(torch.nn.Module):
 
 class ZonalSphericalFunction(torch.nn.Module):
     def __init__(self, dim, n):
-        super(ZonalSphericalFunction, self).__init__()
+        super().__init__()
         self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
         self.forward = vmap(vmap(self._forward))
 
@@ -75,7 +75,7 @@ class ZonalSphericalFunction(torch.nn.Module):
 
 class GegenbauerPolynomials(torch.nn.Module):
     def __init__(self, alpha, n):
-        super(GegenbauerPolynomials, self).__init__()
+        super().__init__()
         self.alpha = alpha
         self.n = n
         self.coefficients = self.compute_coefficients()

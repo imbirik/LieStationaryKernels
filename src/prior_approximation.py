@@ -1,7 +1,7 @@
 import torch
 import warnings
 from itertools import islice
-from functorch import vmap
+# from functorch import vmap
 from src.utils import cartesian_prod
 from math import sqrt
 from src.spectral_kernel import EigenSpaceKernel, EigenFunctionKernel
@@ -9,19 +9,19 @@ from src.spectral_kernel import EigenSpaceKernel, EigenFunctionKernel
 
 class KarhunenLoeveExpansion(torch.nn.Module):
     def __init__(self, kernel: EigenSpaceKernel, approx_order=None):
-        super(KarhunenLoeveExpansion, self).__init__()
+        super().__init__()
 
         if approx_order is None:
-            approx_order = sum(kernel.space.eigenspaces_dims)
+            approx_order = sum(kernel.space.lb_eigenspaces_dims)
 
-        if sum(kernel.space.eigenspaces_dims) < approx_order:
+        if sum(kernel.space.lb_eigenspaces_dims) < approx_order:
             raise ValueError("approx_order must be lower or equal then number of prepared eigenfunctions")
 
         self.num_eigenspaces = 0
         new_order = 0
 
         while new_order < approx_order:
-            new_order += kernel.space.eigenspaces_dims[self.num_eigenspaces]
+            new_order += kernel.space.lb_eigenspaces_dims[self.num_eigenspaces]
             self.num_eigenspaces += 1
 
         if self.num_eigenspaces != approx_order:
@@ -37,7 +37,7 @@ class KarhunenLoeveExpansion(torch.nn.Module):
 
     def forward(self, x):
         res = []
-        for lmd, f in islice(zip(self.space.eigenvalues, self.space.eigenspaces), self.num_eigenspaces):
+        for lmd, f in islice(zip(self.space.lb_eigenvalues, self.space.lb_eigenbases), self.num_eigenspaces):
             res.append(self.measure(lmd) * f(x).T)
         res = torch.cat(res, 1)  # [len(x), approx_order]
         res = torch.einsum('ij,j->i', res, self.weights) # [len(x)]
@@ -45,15 +45,15 @@ class KarhunenLoeveExpansion(torch.nn.Module):
 
 
 class RandomPhaseApproximation(torch.nn.Module):
-    def __init__(self, kernel: EigenFunctionKernel, approx_order=None, phase_order=100):
-        super(RandomPhaseApproximation, self).__init__()
+    def __init__(self, kernel: EigenFunctionKernel, approx_order=None, phase_order=1000):
+        super().__init__()
 
         self.kernel = kernel
 
         if approx_order is None:
-            approx_order = len(self.kernel.space.eigenfunctions)
+            approx_order = len(self.kernel.space.lb_eigenvalues)
 
-        if approx_order < len(self.kernel.space.eigenfunctions):
+        if approx_order < len(self.kernel.space.lb_eigenvalues):
             raise ValueError("number of computed eigenfunctions of space must be greater than approx_order")
         self.approx_order = approx_order
         self.phase_order = phase_order
@@ -73,7 +73,7 @@ class RandomPhaseApproximation(torch.nn.Module):
     def make_embedding(self, x):
         embeddings = []
         for i in range(self.approx_order):
-            lmd, f = self.kernel.space.eigenvalues[i], self.kernel.space.eigenfunctions[i]
+            lmd, f = self.kernel.space.lb_eigenvalues[i], self.kernel.space.lb_eigenbases_sums[i]
             phase, weight = self.phases[i], self.weights[i]  # [num_phase, ...], [num_phase]
 
             x_, phase_ = cartesian_prod(x, phase)  # [len(x), num_phase, ...]

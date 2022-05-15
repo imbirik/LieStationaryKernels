@@ -1,6 +1,6 @@
 import unittest
 import torch
-import functorch
+# import functorch
 import numpy as np
 from src.spaces.sphere import Sphere
 from src.spectral_kernel import EigenFunctionKernel, EigenSpaceKernel
@@ -21,7 +21,7 @@ class TestSphere(unittest.TestCase):
 
         self.func_kernel = EigenFunctionKernel(measure=self.measure, space=self.space)
         self.space_kernel = EigenFunctionKernel(measure=self.measure, space=self.space)
-        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=100000)
+        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**5)
 
         self.n, self.m = 10, 20
         self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
@@ -38,16 +38,19 @@ class TestSphere(unittest.TestCase):
 
     def test_sampler(self):
         true_ans = torch.ones(self.n, dtype=dtype)
-        self.assertTrue(torch.allclose(functorch.vmap(torch.dot)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(torch.vmap(torch.dot)(self.x, self.x), true_ans))
 
     def test_harmonics(self):
         n = 100000
         x = torch.randn(n, self.dim + 1, dtype=dtype)
         x = x / torch.norm(x, dim=1, keepdim=True)
         for i in range(self.order):
-            num_harmonics = self.space.eigenspaces_dims[i]
-            embed = self.space.eigenspaces[i](x)/np.sqrt(n)
+            num_harmonics = self.space.lb_eigenspaces_dims[i]
+            embed = self.space.lb_eigenbases[i](x)/np.sqrt(n)
             cov = torch.einsum('ij,kj->ik', embed, embed)
             eye = torch.eye(num_harmonics, dtype=dtype)
             self.assertTrue(torch.allclose(cov, eye, atol=1e-1))
 
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

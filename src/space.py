@@ -1,37 +1,42 @@
 import torch
+from abc import ABC, abstractmethod
 
 
-class AbstractSpace(torch.nn.Module):
+class AbstractSpace(torch.nn.Module, ABC):
     '''
-    Base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space
+    Abstract base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space
     Contains
     '''
     def __init__(self):
 
-        super(AbstractSpace, self).__init__()
+        super().__init__()
 
         self.dim = None
         self.order = None
 
-        self.eigenfunctions = []
-        self.eigenspaces = []
-        self.eigenvalues = []
-        self.eigenspaces_dims = []
+        self.lb_eigenbases = []
+        self.lb_eigenbases_sums = []
+        self.lb_eigenvalues = []
+        self.lb_eigenspaces_dims = []
 
+    @abstractmethod
     def dist(self, x, y):
         # compute distance between x and y
         pass
 
-    def difference(self, x, y):
-        # Using group structure computes xy^{-1}
-        pass
+    # @abstractmethod
+    # def difference(self, x, y):
+    #     # Using group structure computes xy^{-1}
+    #     pass
 
+    @abstractmethod
     def rand(self, n=1):
         # returns random element with respect to haar measure
         pass
 
-    def rand_phase(self, n=1):
-        pass
+    # @abstractmethod
+    # def rand_phase(self, n=1):
+    #     pass
 
 
 class LieGroup(AbstractSpace):
