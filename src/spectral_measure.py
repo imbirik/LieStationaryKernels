@@ -12,18 +12,11 @@ class AbstractSpectralMeasure(torch.nn.Module):
         pass
 
 
-class AbstractSpectralMeasure(torch.nn.Module):
-    def __init__(self, dim):
-        super(AbstractSpectralMeasure, self).__init__()
-        self.dim = dim
-
-
 class MaternSpectralMeasure(AbstractSpectralMeasure):
     def __init__(self, dim, lengthscale, nu):
         super(MaternSpectralMeasure, self).__init__(dim)
         self.lengthscale = Parameter(torch.tensor([lengthscale]))
         self.nu = Parameter(torch.tensor([nu]))
-
 
     def forward(self, eigenvalue):
         return torch.pow(self.nu[0]/(self.lengthscale[0] ** 2) + eigenvalue, -self.nu[0] - self.dim/4)
@@ -36,4 +29,3 @@ class SqExpSpectralMeasure(AbstractSpectralMeasure):
 
     def forward(self, eigenvalues):
         return torch.exp((-self.lengthscale[0] ** 2)/2 * eigenvalues)
-

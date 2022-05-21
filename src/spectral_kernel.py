@@ -1,34 +1,39 @@
+from abc import ABC, abstractmethod
+
 import torch
-import gpytorch
+# import gpytorch
 
 from src.spectral_measure import AbstractSpectralMeasure
-from src.space import AbstractSpace
+from src.space import AbstractManifold
 from src.utils import cartesian_prod
 
 dtype = torch.complex128
 
 
-class AbstractSpectralKernel(torch.nn.Module):
-    def __init__(self, measure: AbstractSpectralMeasure, space: AbstractSpace):
+class AbstractSpectralKernel(torch.nn.Module, ABC):
+    def __init__(self, measure: AbstractSpectralMeasure, manifold: AbstractManifold):
         super().__init__()
         self.measure = measure
-        self.space = space
+        self.manifold = manifold
 
+    @abstractmethod
     def forward(self, *args):
-        pass
+        raise NotImplementedError
 
 
-class EigenFunctionKernel(AbstractSpectralKernel):
-    def __init__(self, measure, space):
-        super().__init__(measure, space)
+class EigenbasisSumKernel(AbstractSpectralKernel):
+    def __init__(self, measure, manifold):
+        super().__init__(measure, manifold)
 
-        point = space.rand()
+        point = manifold.rand()
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def forward(self, x, y, normalize=True):
         x1, y1 = cartesian_prod(x, y)
         cov = torch.zeros(len(x), len(y), dtype=dtype)
-        for lmd, f in zip(self.space.lb_eigenvalues, self.space.lb_eigenbases_sums):
+        for eigenspace in self.manifold.lb_eigenspaces:
+            lmd = eigenspace.lb_eigenvalue
+            f = eigenspace.basis_sum
             cov += self.measure(lmd) * f(x1, y1)
         if normalize:
             return cov.real/self.normalizer
@@ -36,16 +41,18 @@ class EigenFunctionKernel(AbstractSpectralKernel):
             return cov.real
 
 
-class EigenSpaceKernel(AbstractSpectralKernel):
-    def __init__(self, measure, space):
-        super().__init__(measure, space)
+class EigenbasisKernel(AbstractSpectralKernel):
+    def __init__(self, measure, manifold):
+        super().__init__(measure, manifold)
 
-        point = space.rand()
+        point = manifold.rand()
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def forward(self, x, y, normalize=True):
         cov = torch.zeros(len(x), len(y))
-        for lmd, f in zip(self.space.lb_eigenvalues, self.space.lb_eigenbases):
+        for eigenspace in self.manifold.lb_eigenspaces:
+            lmd = eigenspace.lb_eigenvalue
+            f = eigenspace.basis
             f_x, f_y = f(x).T, f(y).T
             cov += self.measure(lmd) * (f_x @ f_y.T)
         if normalize:

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions
-from src.space import LieGroup
+from src.space import LieGroup, LBEigenspaceWithSum
 import sympy as sp
 from functools import reduce
 import operator
@@ -12,31 +12,24 @@ dtype = torch.double
 
 
 class SO(LieGroup):
-    '''
-    SO(dim), special orthogonal group of degree dim
-    '''
+    """SO(dim), special orthogonal group of degree dim."""
 
     def __init__(self, dim: int, order: int):
         '''
         :param dim: dimension of the space
-        :param order: order of approximation. Number of eigenspaces under consideration.
+        :param order: the order of approximation, the number of representations calculated
         '''
-        super().__init__()
-
+        if dim <= 2 or dim == 4:
+            raise ValueError("Dimensions 1, 2, 4 are not supported")
         self.dim = dim
         self.rank = dim // 2
         self.order = order
+        self.Eigenspace = SOLBEigenspace
         if self.dim % 2 == 0:
             self.rho = np.arange(self.rank)[::-1]
         else:
             self.rho = np.arange(self.rank)[::-1] + 0.5
-
-        if dim <= 2 or dim == 4:
-            raise ValueError("Dimensions 1, 2, 4 are not supported")
-
-        self.signatures, self.lb_eigenspaces_dims, self.lb_eigenvalues, = self._generate_signatures(self.order)
-        self.lb_eigenbases_sums = [SOCharacter(self.dim, signature, eigen_dim)
-                                   for signature, eigen_dim in zip(self.signatures, self.lb_eigenspaces_dims)]
+        super().__init__(order=order)
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -55,12 +48,13 @@ class SO(LieGroup):
         q = q @ sign_matirx
         return q
 
-    def _generate_signatures(self, order):
-        '''
-        Representations of SO can be enumerated by partitions of size dim that we will call signatures.
+    def generate_signatures(self, order):
+        """Generate the signatures of irreducible representations
+
+        Representations of SO(dim) can be enumerated by partitions of size dim, called signatures.
         :param int order: number of eigenfunctions that will be returned
-        :return signatures, eigenspaces_dims, eigenvalues: top order representations sorted by eigenvalues.
-        '''
+        :return signatures: signatures of representations likely having the smallest LB eigenvalues
+        """
         signatures = []
         if self.dim == 3:
             signature_sum = order
@@ -74,39 +68,41 @@ class SO(LieGroup):
                     if self.dim % 2 == 0 and signature[-1] != 0:
                         signature[-1] = -signature[-1]
                         signatures.append(tuple(signature))
+        return signatures
 
-        def _compute_dim(signature):
-            if self.dim % 2 == 1:
-                qs = [pk + self.rank - k - 1 / 2 for k, pk in enumerate(signature)]
-                rep_dim = reduce(operator.mul, (2 * qs[k] / math.factorial(2 * k + 1) for k in range(0, self.rank))) \
-                             * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
-                                                  for i, j in it.combinations(range(self.rank), 2)), 1)
-                return int(round(rep_dim))
-            else:
-                qs = [pk + self.rank - k - 1 if k != self.rank - 1 else abs(pk) for k, pk in enumerate(signature)]
-                rep_dim = int(reduce(operator.mul, (2 / math.factorial(2 * k) for k in range(1, self.rank)))
-                              * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
-                                             for i, j in it.combinations(range(self.rank), 2)), 1))
-                return int(round(rep_dim))
 
-        def _compute_eigenvalue(sgn):
-            np_sgn = np.array(sgn)
-            return np.linalg.norm(self.rho + np_sgn) ** 2 - np.linalg.norm(self.rho) ** 2
+class SOLBEigenspace(LBEigenspaceWithSum):
+    """The Laplace-Beltrami eigenspace for the special orthogonal group."""
+    def __init__(self, signature, *, manifold: SO):
+        """
+        :param signature: the signature of a representation
+        :param manifold: the "parent" manifold, an instance of SO
+        """
+        super().__init__(signature, manifold=manifold)
 
-        signatures_vals = []
-        for sgn in signatures:
-            dim = _compute_dim(sgn)
-            eigenvalue = _compute_eigenvalue(sgn)
-            signatures_vals.append([sgn, dim, eigenvalue])
+    def compute_dimension(self):
+        signature = self.index
+        so = self.manifold
+        if so.dim % 2 == 1:
+            qs = [pk + so.rank - k - 1 / 2 for k, pk in enumerate(signature)]
+            rep_dim = reduce(operator.mul, (2 * qs[k] / math.factorial(2 * k + 1) for k in range(0, so.rank))) \
+                      * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
+                                              for i, j in it.combinations(range(so.rank), 2)), 1)
+            return int(round(rep_dim))
+        else:
+            qs = [pk + so.rank - k - 1 if k != so.rank - 1 else abs(pk) for k, pk in enumerate(signature)]
+            rep_dim = int(reduce(operator.mul, (2 / math.factorial(2 * k) for k in range(1, so.rank)))
+                          * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
+                                                  for i, j in it.combinations(range(so.rank), 2)), 1))
+            return int(round(rep_dim))
 
-        signatures_vals.sort(key=lambda x: x[2])
-        signatures_vals = signatures_vals[:order]
+    def compute_lb_eigenvalue(self):
+        np_sgn = np.array(self.index)
+        rho = self.manifold.rho
+        return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
-        signatures = np.array([x[0] for x in signatures_vals])
-        dims = torch.tensor([x[1] for x in signatures_vals], dtype=dtype)
-        eigenvalues = torch.tensor([x[2] for x in signatures_vals])
-
-        return signatures, dims, eigenvalues
+    def compute_basis_sum(self):
+        return SOCharacter(self.manifold.dim, self.index, self.dimension)
 
 
 class SOCharacter(torch.nn.Module):
@@ -161,6 +157,7 @@ class SOCharacter(torch.nn.Module):
         return torch.all(torch.isclose(x_, eyes), dim=1)
 
     def forward(self, x, y):
+        # x - n*d*d, y - m*d*d
         n, m = x.shape[0], y.shape[1] # number of x and y
         # [n,m,d,d] -> [n*m, d, d]
         x_flatten = torch.reshape(x, (-1, x.shape[2], x.shape[3]))

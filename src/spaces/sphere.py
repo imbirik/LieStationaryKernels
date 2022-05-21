@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from scipy.special import loggamma
 
-from src.space import HomogeneousSpace
+from src.space import HomogeneousSpace, LBEigenspaceWithSum, LBEigenspaceWithBasis
 import spherical_harmonics.torch
 # from functorch import vmap
 from torch import vmap
@@ -14,24 +14,20 @@ dtype = torch.double
 
 
 class Sphere(HomogeneousSpace):
-    '''
-    S^{dim} sphere is contained in R^{dim+1}
-    '''
+    """
+    S^{dim} sphere, in R^{dim+1}
+    """
     def __init__(self, dim: int, order: int):
-        '''
+        """
         :param dim: sphere dimension
-        :param order: order of approximation. Number of eigenspaces under consideration.
-        '''
-        super().__init__()
+        :param order: the order of approximation, the umber of Laplace-Beltrami eigenspaces under consideration.
+        """
         self.dim = dim
         self.order = order
+        super().__init__()
 
-        fundamental_system = FundamentalSystemCache(self.dim + 1)
-
-        self.lb_eigenbases = [NormalizedSphericalFunctions(self.dim, n, fundamental_system) for n in range(1, self.order + 1)]
-        self.lb_eigenbases_sums = [ZonalSphericalFunction(self.dim, n) for n in range(1, self.order + 1)]
-        self.lb_eigenvalues = [n * (self.dim + n - 1) for n in range(1, self.order + 1)]
-        self.lb_eigenspaces_dims = [num_harmonics(self.dim + 1, n) for n in range(1, self.order + 1)]
+        self.fundamental_system = FundamentalSystemCache(self.dim + 1)
+        self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(1, self.order + 1)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -42,6 +38,29 @@ class Sphere(HomogeneousSpace):
         x = torch.randn(n, self.dim + 1, dtype=dtype)
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
+
+
+class SphereLBEigenspace(LBEigenspaceWithSum, LBEigenspaceWithBasis):
+    """The Laplace-Beltrami eigenspace for the sphere."""
+    def __init__(self, index, *, manifold: Sphere):
+        """
+        :param index: the index of an eigenspace
+        :param manifold: the "parent" manifold, an instance of Sphere
+        """
+        super().__init__(index, manifold=manifold)
+
+    def compute_dimension(self):
+        return num_harmonics(self.manifold.dim + 1, self.index)
+
+    def compute_lb_eigenvalue(self):
+        n = self.index
+        return n * (self.manifold.dim + n - 1)
+
+    def compute_basis_sum(self):
+        return ZonalSphericalFunction(self.manifold.dim, self.index)
+
+    def compute_basis(self):
+        return NormalizedSphericalFunctions(self.manifold.dim, self.index, self.manifold.fundamental_system)
 
 
 class NormalizedSphericalFunctions(torch.nn.Module):
