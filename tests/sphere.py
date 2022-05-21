@@ -6,6 +6,7 @@ from src.spaces.sphere import Sphere
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
+
 dtype = torch.double
 
 
@@ -54,3 +55,4 @@ class TestSphere(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+

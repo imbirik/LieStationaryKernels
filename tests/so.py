@@ -7,6 +7,7 @@ from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
+
 dtype = torch.double
 
 

@@ -1,6 +1,7 @@
 import torch
 from abc import ABC, abstractmethod
 import heapq
+from src.utils import lazy_property
 
 
 class AbstractManifold(torch.nn.Module, ABC):
@@ -64,10 +65,6 @@ class LBEigenspace(ABC):
         self.manifold = manifold
         self.dimension = self.compute_dimension()
         self.lb_eigenvalue = self.compute_lb_eigenvalue()
-        if isinstance(self, LBEigenspaceWithSum):
-            self.basis_sum = self.compute_basis_sum()
-        if isinstance(self, LBEigenspaceWithBasis):
-            self.basis = self.compute_basis()
 
     @abstractmethod
     def compute_dimension(self):
@@ -82,9 +79,11 @@ class LBEigenspace(ABC):
 
 class LBEigenspaceWithBasis(LBEigenspace, ABC):
     """Laplace-Beltrami eigenspace ABC in case orthonormal basis is available"""
-    # def __init__(self, index, *, manifold: AbstractManifold):
-    #     super().__init__(index, manifold=manifold)
-    #     self.basis = self.compute_basis()
+    @lazy_property
+    # @property
+    def basis(self):
+        basis = self.compute_basis()
+        return basis
 
     @abstractmethod
     def compute_basis(self):
@@ -94,9 +93,11 @@ class LBEigenspaceWithBasis(LBEigenspace, ABC):
 
 class LBEigenspaceWithSum(LBEigenspace, ABC):
     """Laplace-Beltrami eigenspace ABC in case the sum function of an orthonormal basis paired products is available"""
-    # def __init__(self, index, *, manifold: AbstractManifold):
-    #     super().__init__(index, manifold=manifold)
-    #     self.basis_sum = self.compute_basis_sum()
+    @lazy_property
+    # @property
+    def basis_sum(self):
+        basis_sum = self.compute_basis_sum()
+        return basis_sum
 
     @abstractmethod
     def compute_basis_sum(self):
