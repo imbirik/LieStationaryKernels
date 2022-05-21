@@ -80,7 +80,6 @@ class LBEigenspace(ABC):
 class LBEigenspaceWithBasis(LBEigenspace, ABC):
     """Laplace-Beltrami eigenspace ABC in case orthonormal basis is available"""
     @lazy_property
-    # @property
     def basis(self):
         basis = self.compute_basis()
         return basis
@@ -94,7 +93,6 @@ class LBEigenspaceWithBasis(LBEigenspace, ABC):
 class LBEigenspaceWithSum(LBEigenspace, ABC):
     """Laplace-Beltrami eigenspace ABC in case the sum function of an orthonormal basis paired products is available"""
     @lazy_property
-    # @property
     def basis_sum(self):
         basis_sum = self.compute_basis_sum()
         return basis_sum
