@@ -40,12 +40,10 @@ class SO(LieGroup):
     def rand(self, n=1):
         h = torch.randn((n, self.dim, self.dim), dtype=dtype)
         q, r = torch.linalg.qr(h)
-        diag_sign = torch.diag_embed(torch.diagonal(torch.sign(r), dim1=-2, dim2=-1))
-        q = torch.bmm(q, diag_sign)
-        det_sign = torch.sign(torch.det(q))
-        sign_matirx = torch.eye(self.dim, dtype=dtype).reshape((-1, self.dim, self.dim)).repeat((n, 1, 1))
-        sign_matirx[:, 0, 0] = det_sign
-        q = q @ sign_matirx
+        r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
+        q *= r_diag_sign[:, None]
+        q_det_sign = torch.sign(torch.det(q))
+        q[:, :, 0] *= q_det_sign[:, None]
         return q
 
     def generate_signatures(self, order):
