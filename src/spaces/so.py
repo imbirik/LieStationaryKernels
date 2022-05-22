@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions
-from src.space import LieGroup, LBEigenspaceWithSum
+from src.space import LieGroup, LBEigenspaceWithSum, LieGroupCharacter
 import sympy as sp
 from functools import reduce
 import operator
@@ -68,6 +68,10 @@ class SO(LieGroup):
                         signatures.append(tuple(signature))
         return signatures
 
+    @staticmethod
+    def inv(x):
+        return torch.transpose(x, -1, -2)
+
 
 class SOLBEigenspace(LBEigenspaceWithSum):
     """The Laplace-Beltrami eigenspace for the special orthogonal group."""
@@ -100,18 +104,13 @@ class SOLBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        return SOCharacter(self.manifold.dim, self.index, self.dimension)
+        return SOCharacter(representation=self)
 
 
-class SOCharacter(torch.nn.Module):
-    def __init__(self, dim, signature, eigen_dim):
-        super().__init__()
-        self.dim = dim
-        self.signature = signature
-        self.rank = dim // 2
-        self.eigen_dim = eigen_dim
-
-    def torus_embed(self, x):
+class SOCharacter(LieGroupCharacter):
+    """Representation character for special orthogonal group"""
+    @staticmethod
+    def torus_embed(x):
         #TODO :check
         eigv = torch.linalg.eigvals(x)
         sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, :, 0]
@@ -119,33 +118,38 @@ class SOCharacter(torch.nn.Module):
         gamma = eigv[:, 0:-1:2]
         return gamma
 
-    def xi0(self, qs, gamma):
+    @staticmethod
+    def xi0(qs, gamma):
         a = torch.stack([torch.pow(gamma, q) + torch.pow(gamma, -q) for q in qs], dim=-1)
         return torch.det(a)
 
-    def xi1(self, qs, gamma):
+    @staticmethod
+    def xi1(qs, gamma):
         a = torch.stack([torch.pow(gamma, q) - torch.pow(gamma, -q) for q in qs], dim=-1)
         return torch.det(a)
 
     def chi(self, x):
-        eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
+        rank = self.representation.manifold.rank
+        signature = self.representation.index
+        # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
         gamma = self.torus_embed(x)
-        if self.dim % 2:
-            qs = [pk + self.rank - k - 1 / 2 for k, pk in enumerate(self.signature)]
+        if self.representation.dimension % 2:
+            qs = [pk + rank - k - 1 / 2 for k, pk in enumerate(signature)]
             return self.xi1(qs, gamma) / \
-                   self.xi1([k - 1 / 2 for k in range(self.rank, 0, -1)], gamma)
+                   self.xi1([k - 1 / 2 for k in range(rank, 0, -1)], gamma)
         else:
-            qs = [pk + self.rank - k - 1 if k != self.rank - 1 else abs(pk)
-                  for k, pk in enumerate(self.signature)]
-            if self.signature[-1] == 0:
+            qs = [pk + rank - k - 1 if k != rank - 1 else abs(pk)
+                  for k, pk in enumerate(signature)]
+            if signature[-1] == 0:
                 return self.xi0(qs, gamma) / \
-                       self.xi0(list(reversed(range(self.rank))), gamma)
+                       self.xi0(list(reversed(range(rank))), gamma)
             else:
-                sign = math.copysign(1, self.signature[-1])
+                sign = math.copysign(1, signature[-1])
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
-                       self.xi0(list(reversed(range(self.rank))), gamma)
+                       self.xi0(list(reversed(range(rank))), gamma)
 
-    def close_to_eye(self, x):
+    @staticmethod
+    def close_to_eye(x):
         d = x.shape[1]  # x = [n,d,d]
         x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
 
@@ -153,20 +157,3 @@ class SOCharacter(torch.nn.Module):
         eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
 
         return torch.all(torch.isclose(x_, eyes), dim=1)
-
-    def forward(self, x, y):
-        # x - n*d*d, y - m*d*d
-        n, m = x.shape[0], y.shape[1] # number of x and y
-        # [n,m,d,d] -> [n*m, d, d]
-        x_flatten = torch.reshape(x, (-1, x.shape[2], x.shape[3]))
-        y_flatten = torch.reshape(y, (-1, y.shape[2], y.shape[3]))
-
-        x_yT = torch.bmm(x_flatten, torch.transpose(y_flatten, -1, -2))  # [n*m, d, d]
-        chi_flatten = self.eigen_dim * self.chi(x_yT)  # [n*m]
-
-        close_to_eye = self.close_to_eye(x_yT)  # [n*m]
-
-        chi_flatten = torch.where(close_to_eye,
-                                  self.eigen_dim * self.eigen_dim * torch.ones_like(chi_flatten), chi_flatten)
-
-        return chi_flatten.reshape(n, m)

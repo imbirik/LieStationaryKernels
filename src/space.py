@@ -45,6 +45,12 @@ class LieGroup(AbstractManifold, ABC):
         """Generate signatures of representations to enumerate them."""
         raise NotImplementedError
 
+    @staticmethod
+    @abstractmethod
+    def inv(x):
+        """Calculate the group inverse of a batch of group elements"""
+        raise NotImplementedError
+
 
 class HomogeneousSpace(AbstractManifold, ABC):
     pass
@@ -101,3 +107,28 @@ class LBEigenspaceWithSum(LBEigenspace, ABC):
     def compute_basis_sum(self):
         """Compute the sum of the orthonormal basis paired products."""
         raise NotImplementedError
+
+
+class LieGroupCharacter(torch.nn.Module, ABC):
+    """Lie group representation character abstract base class"""
+    def __init__(self, *, representation: LBEigenspace):
+        super().__init__()
+        self.representation = representation
+
+    def forward(self, x, y):
+        # x - n*d*d, y - m*d*d
+        n, m = x.shape[0], y.shape[1] # number of x and y
+        # [n,m,d,d] -> [n*m, d, d]
+        x_flatten = torch.reshape(x, (-1, x.shape[2], x.shape[3]))
+        y_flatten = torch.reshape(y, (-1, y.shape[2], y.shape[3]))
+
+        y_inv = self.representation.manifold.inv(y_flatten)
+        x_yinv = torch.bmm(x_flatten, y_inv)  # [n*m, d, d]
+        chi_flatten = self.representation.dimension * self.chi(x_yinv)  # [n*m]
+
+        close_to_eye = self.close_to_eye(x_yinv)  # [n*m]
+
+        chi_flatten = torch.where(close_to_eye,
+                                  self.representation.dimension**2 * torch.ones_like(chi_flatten), chi_flatten)
+
+        return chi_flatten.reshape(n, m)
