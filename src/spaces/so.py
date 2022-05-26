@@ -15,10 +15,10 @@ class SO(LieGroup):
     """SO(dim), special orthogonal group of degree dim."""
 
     def __init__(self, dim: int, order: int):
-        '''
+        """
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
-        '''
+        """
         if dim <= 2 or dim == 4:
             raise ValueError("Dimensions 1, 2, 4 are not supported")
         self.dim = dim
@@ -26,9 +26,9 @@ class SO(LieGroup):
         self.order = order
         self.Eigenspace = SOLBEigenspace
         if self.dim % 2 == 0:
-            self.rho = np.arange(self.rank)[::-1]
+            self.rho = np.arange(self.rank-1, -1, -1)
         else:
-            self.rho = np.arange(self.rank)[::-1] + 0.5
+            self.rho = np.arange(self.rank-1, -1, -1) + 0.5
         super().__init__(order=order)
 
     def dist(self, x, y):
@@ -59,7 +59,7 @@ class SO(LieGroup):
         else:
             signature_sum = 20
         for signature_sum in range(0, signature_sum):
-            for i in range(1, self.rank + 1):
+            for i in range(0, self.rank + 1):
                 for signature in fixed_length_partitions(signature_sum, i):
                     signature.extend([0] * (self.rank-i))
                     signatures.append(tuple(signature))
@@ -69,8 +69,8 @@ class SO(LieGroup):
         return signatures
 
     @staticmethod
-    def inv(x):
-        return torch.transpose(x, -1, -2)
+    def inv(x: torch.Tensor):
+        return x.mT
 
 
 class SOLBEigenspace(LBEigenspaceWithSum):

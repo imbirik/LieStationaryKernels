@@ -79,9 +79,7 @@ class RandomPhaseApproximation(torch.nn.Module):
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.basis_sum
             phase, weight = self.phases[i], self.weights[i]  # [num_phase, ...], [num_phase]
-
             x_, phase_ = cartesian_prod(x, phase)  # [len(x), num_phase, ...]
-
             eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(x_, phase_)
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
@@ -95,5 +93,3 @@ class RandomPhaseApproximation(torch.nn.Module):
     def _cov(self, x, y):
         x_embed, y_embed = self.make_embedding(x), self.make_embedding(y)
         return (x_embed @ torch.conj(y_embed.T)).real
-
-
