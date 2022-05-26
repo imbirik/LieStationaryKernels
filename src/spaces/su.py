@@ -26,11 +26,11 @@ class SU(LieGroup):
 
         super().__init__(order=order)
 
-    # def dist(self, x, y):
-    #     return torch.arccos(torch.dot(x, y))
-    #
-    # def difference(self, x, y):
-    #     return x @ y.mH
+    def dist(self, x, y):
+        return torch.arccos(torch.dot(x, y))
+
+    def difference(self, x, y):
+        return x @ y.mH
 
     def rand(self, n=1):
         h = torch.randn((n, self.dim, self.dim), dtype=dtype)
