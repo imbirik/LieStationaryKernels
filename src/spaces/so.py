@@ -2,7 +2,6 @@ import torch
 import numpy as np
 from src.utils import fixed_length_partitions
 from src.space import LieGroup, LBEigenspaceWithSum, LieGroupCharacter
-import sympy as sp
 from functools import reduce
 import operator
 import math
@@ -133,7 +132,7 @@ class SOCharacter(LieGroupCharacter):
         signature = self.representation.index
         # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
         gamma = self.torus_embed(x)
-        if self.representation.dimension % 2:
+        if self.representation.manifold.dim % 2:
             qs = [pk + rank - k - 1 / 2 for k, pk in enumerate(signature)]
             return self.xi1(qs, gamma) / \
                    self.xi1([k - 1 / 2 for k in range(rank, 0, -1)], gamma)
