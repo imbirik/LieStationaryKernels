@@ -1,3 +1,4 @@
+
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions
@@ -103,7 +104,10 @@ class SOLBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        return SOCharacter(representation=self)
+        if self.manifold.dim == 3:
+            return SO3Character(representation=self)
+        else:
+            return SOCharacter(representation=self)
 
 
 class SOCharacter(LieGroupCharacter):
@@ -146,6 +150,31 @@ class SOCharacter(LieGroupCharacter):
                 sign = math.copysign(1, signature[-1])
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
                        self.xi0(list(reversed(range(rank))), gamma)
+
+    @staticmethod
+    def close_to_eye(x):
+        d = x.shape[1]  # x = [n,d,d]
+        x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
+
+        eye = torch.reshape(torch.torch.eye(d, dtype=dtype).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
+        eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
+
+        return torch.all(torch.isclose(x_, eyes), dim=1)
+
+
+class SO3Character(LieGroupCharacter):
+    @staticmethod
+    def torus_embed(x):
+        cos = torch.from_numpy((np.trace(x, axis1=-1, axis2=-2)-1)/2)
+        gamma = cos + 1j * torch.sqrt(1-torch.square(cos))
+        return gamma
+
+    def chi(self, x):
+        l = self.representation.index[0]
+        gamma = self.torus_embed(x)
+        numer = torch.pow(gamma, l+0.5) - torch.pow(torch.conj(gamma), l+0.5)
+        denom = torch.sqrt(gamma) - torch.sqrt(torch.conj(gamma))
+        return numer / denom
 
     @staticmethod
     def close_to_eye(x):
