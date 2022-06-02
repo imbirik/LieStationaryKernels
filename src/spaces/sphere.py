@@ -4,8 +4,8 @@ from scipy.special import loggamma
 
 from src.space import HomogeneousSpace, LBEigenspaceWithSum, LBEigenspaceWithBasis
 import spherical_harmonics.torch
-# from functorch import vmap
-from torch import vmap
+from functorch import vmap
+#from torch import vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics

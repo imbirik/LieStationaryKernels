@@ -4,7 +4,9 @@ from itertools import islice
 # from functorch import vmap
 from src.utils import cartesian_prod
 from math import sqrt
-from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel
+from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomFourierFeaturesKernel
+
+dtype = torch.double
 
 
 class KarhunenLoeveExpansion(torch.nn.Module):
@@ -93,3 +95,33 @@ class RandomPhaseApproximation(torch.nn.Module):
     def _cov(self, x, y):
         x_embed, y_embed = self.make_embedding(x), self.make_embedding(y)
         return (x_embed @ torch.conj(y_embed.T)).real
+
+
+class RandomFourierApproximation(torch.nn.Module):
+    def __init__(self, kernel: RandomFourierFeaturesKernel):
+        super().__init__()
+
+        self.kernel = kernel
+        self.weights_real = self.sample_weights()
+        self.weights_imag = self.sample_weights()
+
+    def sample_weights(self):
+        return torch.randn(self.kernel.manifold.order, dtype=dtype)
+
+    def resample(self):
+        self.weights_real = self.sample_weights()
+        self.weights_imag = self.sample_weights()
+        self.kernel.manifold.generate_lb_eigenspaces(self.kernel.measure)
+
+    def forward(self, x):  # [N, ...]
+        x_ = self.kernel.manifold.to_group(x)
+        embedding = self.kernel.manifold.lb_eigenspaces(x_)
+        sample_real = torch.einsum('nm,m->n', embedding.real, self.weights_real)
+        sample_imag = torch.einsum('nm,m->n', embedding.imag, self.weights_imag)
+        sample = torch.cat((sample_real, sample_imag), 1)/sqrt(self.kernel.normalizer)
+        return sample
+
+    def _cov(self, x, y):
+        x_, y_ = self.kernel.manifold.to_group(x), self.kernel.manifold.to_group(y)
+        x_embed, y_embed = self.kernel.manifold.lb_eigenspaces(x_), self.kernel.manifold.lb_eigenspaces(y_)
+        return (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer

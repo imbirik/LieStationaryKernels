@@ -8,6 +8,7 @@ from src.space import AbstractManifold
 from src.utils import cartesian_prod
 
 dtype = torch.complex128
+#device = torch.device('cuda')
 
 
 class AbstractSpectralKernel(torch.nn.Module, ABC):
@@ -59,3 +60,27 @@ class EigenbasisKernel(AbstractSpectralKernel):
             return cov/self.normalizer
         else:
             return cov
+
+
+class RandomFourierFeaturesKernel(AbstractSpectralKernel):
+    """Generalization of Random fourier features method"""
+    def __init__(self, measure, manifold):
+        super().__init__(measure, manifold)
+        manifold.generate_lb_eigenspaces(measure)  # Generate lb_eigenvalues with respect to spectral measure
+        point = manifold.rand()
+        self.normalizer = self.forward(point, point, normalize=False)[0, 0]
+
+    def forward(self, x, y, normalize=True):
+        """We don't need summation because manifold.lb_eigenspaces is already vectorized"""
+        x_, y_ = self.manifold.to_group(x), self.manifold.to_group(y)
+        x_yinv = self.manifold.pairwise_diff(x_, y_)
+        f = self.manifold.lb_eigenspaces
+        x_yinv_embed = f(x_yinv)  # (n*m,order)
+        eye_embed = f(self.manifold.id)  # (1, order)
+        cov_flatten = x_yinv_embed @ (torch.conj(eye_embed).T)
+        cov = cov_flatten.view(x.size()[0], y.size()[0])
+        if normalize:
+            return cov.real / self.normalizer
+        else:
+            return cov.real
+

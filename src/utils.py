@@ -1,4 +1,18 @@
 import torch
+dtype = torch.double
+
+
+def GOE_sampler(num_samples, n):
+    samples = torch.randn(num_samples, n, n, dtype=dtype)
+    samples = (samples + torch.transpose(samples, -2, -1))/2
+    eigenvalues = torch.linalg.eigvalsh(samples, UPLO='U')
+    return eigenvalues
+
+
+def triu_ind(m, n, offset):
+    a = torch.ones(m, n, n)
+    triu_indices = a.triu(diagonal=offset).nonzero().transpose(0, 1)
+    return triu_indices[0], triu_indices[1], triu_indices[2]
 
 
 def cartesian_prod(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
