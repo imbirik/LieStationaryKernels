@@ -27,7 +27,7 @@ class SU(LieGroup):
         super().__init__(order=order)
 
     def dist(self, x, y):
-        return torch.arccos(torch.dot(x, y))
+        raise NotImplementedError
 
     def difference(self, x, y):
         return x @ y.mH
@@ -58,7 +58,8 @@ class SU(LieGroup):
 
     @staticmethod
     def inv(x: torch.Tensor):
-        return x.mH
+        # (n, dim, dim)
+        return torch.conj(torch.transpose(x, -2, -1))
 
 
 class SULBEigenspace(LBEigenspaceWithSum):

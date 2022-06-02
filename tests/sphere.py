@@ -1,6 +1,6 @@
 import unittest
 import torch
-# import functorch
+import functorch
 import numpy as np
 from src.spaces.sphere import Sphere
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
@@ -13,7 +13,7 @@ dtype = torch.double
 class TestSphere(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dim, self.order = 3, 8
+        self.dim, self.order = 6, 4
         self.space = Sphere(self.dim, order=self.order)
 
         self.lengthscale, self.nu = 3.0, 2.0
@@ -39,7 +39,7 @@ class TestSphere(unittest.TestCase):
 
     def test_sampler(self):
         true_ans = torch.ones(self.n, dtype=dtype)
-        self.assertTrue(torch.allclose(torch.vmap(torch.dot)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(functorch.vmap(torch.dot)(self.x, self.x), true_ans))
 
     def test_harmonics(self):
         n = 100000

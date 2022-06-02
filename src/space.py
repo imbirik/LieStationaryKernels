@@ -22,21 +22,6 @@ class AbstractManifold(torch.nn.Module, ABC):
         # compute distance between x and y
         raise NotImplementedError
 
-    def inv(self, y):
-        """ For y in M computes -y"""
-        raise NotImplementedError
-
-    def pairwise_diff(self, x, y):
-        """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
-        y_inv = self.inv(y)
-        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,...] and [n,m,...]
-
-        x_flatten = torch.reshape(x_, (-1, *(x_.size()[2:])))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, *(y_inv_.size()[2:])))
-
-        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
-        return x_yinv
-
     # @abstractmethod
     # def difference(self, x, y):
     #     # Using group structure computes xy^{-1}
@@ -45,6 +30,9 @@ class AbstractManifold(torch.nn.Module, ABC):
     @abstractmethod
     def rand(self, n=1):
         # returns random element with respect to haar measure
+        raise NotImplementedError
+
+    def pairwise_diff(self, x, y):
         raise NotImplementedError
 
 
@@ -69,6 +57,17 @@ class LieGroup(AbstractManifold, ABC):
     def inv(x):
         """Calculate the group inverse of a batch of group elements"""
         raise NotImplementedError
+
+    def pairwise_diff(self, x, y):
+        """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
+        y_inv = self.inv(y)
+        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,...] and [n,m,...]
+
+        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
+        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
+
+        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
+        return x_yinv
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
@@ -95,6 +94,17 @@ class NonCompactSymmetricSpace(AbstractManifold, ABC):
     def inv(self, x):
         """ For element x in G calculate x^{-1}"""
         raise NotImplementedError
+
+    def pairwise_diff(self, x, y):
+        """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
+        y_inv = self.inv(y)
+        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
+
+        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
+        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
+
+        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
+        return x_yinv
 
 
 class LBEigenfunction(ABC):
@@ -204,20 +214,11 @@ class LieGroupCharacter(torch.nn.Module, ABC):
     def chi(self, x, y):
         raise NotImplementedError
 
-    def forward(self, x, y):
-        # x - n*d*d, y - m*d*d
-        n, m = x.shape[0], y.shape[1] # number of x and y
-        # [n,m,d,d] -> [n*m, d, d]
-        x_flatten = torch.reshape(x, (-1, x.shape[2], x.shape[3]))
-        y_flatten = torch.reshape(y, (-1, y.shape[2], y.shape[3]))
+    def forward(self, x):
+        # [n, dim, dim]
+        chi = self.representation.dimension * self.chi(x)  # [n]
 
-        y_inv = self.representation.manifold.inv(y_flatten)
-        x_yinv = torch.bmm(x_flatten, y_inv)  # [n*m, d, d]
-        chi_flatten = self.representation.dimension * self.chi(x_yinv)  # [n*m]
+        close_to_eye = self.close_to_eye(x)  # [n]
 
-        close_to_eye = self.close_to_eye(x_yinv)  # [n*m]
-
-        chi_flatten = torch.where(close_to_eye,
-                                  self.representation.dimension**2 * torch.ones_like(chi_flatten), chi_flatten)
-
-        return chi_flatten.reshape(n, m)
+        chi = torch.where(close_to_eye, self.representation.dimension**2 * torch.ones_like(chi), chi)
+        return chi

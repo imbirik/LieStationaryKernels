@@ -81,8 +81,8 @@ class RandomPhaseApproximation(torch.nn.Module):
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.basis_sum
             phase, weight = self.phases[i], self.weights[i]  # [num_phase, ...], [num_phase]
-            x_, phase_ = cartesian_prod(x, phase)  # [len(x), num_phase, ...]
-            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(x_, phase_)
+            x_phase_inv = self.kernel.manifold.pairwise_diff(x, phase) # [len(x), num_phase, ...]
+            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(x_phase_inv).view(x.size()[0], self.phase_order)
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
         return torch.cat(embeddings, dim=1)

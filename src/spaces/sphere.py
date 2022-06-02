@@ -2,10 +2,11 @@ import torch
 import numpy as np
 from scipy.special import loggamma
 
+from  src.utils import cartesian_prod
 from src.space import HomogeneousSpace, LBEigenspaceWithSum, LBEigenspaceWithBasis
 import spherical_harmonics.torch
-from functorch import vmap
-#from torch import vmap
+#from functorch import vmap
+from torch import vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics
@@ -38,6 +39,14 @@ class Sphere(HomogeneousSpace):
         x = torch.randn(n, self.dim + 1, dtype=dtype)
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
+
+    def pairwise_diff(self, x, y):
+        # x -- [n,d+1]
+        # y -- [m, d+1]
+        x_, y_ = cartesian_prod(x, y)
+        x_flatten = torch.reshape(x_, (-1, self.dim+1))
+        y_flatten = torch.reshape(y_, (-1, self.dim+1))
+        return vmap(torch.dot)(x_flatten, y_flatten)
 
 
 class SphereLBEigenspace(LBEigenspaceWithSum, LBEigenspaceWithBasis):
@@ -79,7 +88,7 @@ class ZonalSphericalFunction(torch.nn.Module):
     def __init__(self, dim, n):
         super().__init__()
         self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
-        self.forward = vmap(vmap(self._forward))
+        self.forward = vmap(self._forward)
 
         if n == 0:
             self.const = torch.tensor([1.])
@@ -87,8 +96,7 @@ class ZonalSphericalFunction(torch.nn.Module):
             log_d_n = np.log(2*n+dim-1) + loggamma(n+dim-1) - loggamma(dim) - loggamma(n+1)
             self.const = torch.tensor([np.exp(log_d_n)/self.gegenbauer(1.0)])
 
-    def _forward(self, x, y):
-        dist = torch.dot(x, y)
+    def _forward(self, dist):
         return self.gegenbauer(dist) * self.const[0]
 
 

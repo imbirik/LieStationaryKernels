@@ -31,11 +31,11 @@ class SO(LieGroup):
             self.rho = np.arange(self.rank-1, -1, -1) + 0.5
         super().__init__(order=order)
 
-    def dist(self, x, y):
-        return torch.arccos(torch.dot(x, y))
-
     def difference(self, x, y):
         return x @ y.T
+
+    def dist(self, x, y):
+        raise NotImplementedError
 
     def rand(self, n=1):
         h = torch.randn((n, self.dim, self.dim), dtype=dtype)
@@ -70,7 +70,8 @@ class SO(LieGroup):
 
     @staticmethod
     def inv(x: torch.Tensor):
-        return x.mT
+        # (n, dim, dim)
+        return torch.transpose(x, -2, -1)
 
 
 class SOLBEigenspace(LBEigenspaceWithSum):

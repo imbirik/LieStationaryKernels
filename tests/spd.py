@@ -28,20 +28,3 @@ class TestSPD(unittest.TestCase):
         print(cov_sampler)
         print(cov_kernel)
         self.assertTrue(torch.allclose(cov_sampler, cov_kernel, atol=5e-2))
-
-
-if __name__ == "__main__":
-    dim, order = 3, 1000
-    space = SymmetricPositiveDefiniteMatrices(dim=dim, order=order)
-
-    lengthscale, nu = 2.0, 5.0
-    measure = SqExpSpectralMeasure(dim, lengthscale)
-    # self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
-
-    kernel = RandomFourierFeaturesKernel(measure, space)
-
-    n, m = 5, 5
-    x, y = space.rand(n), space.rand(m)
-    cov = kernel(x, x)
-
-    print(torch.all(torch.linalg.eigvalsh(cov) > 0))
