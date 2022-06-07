@@ -10,10 +10,10 @@ dtype = torch.double
 class TestSPD(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dim, self.order = 3, 100000
+        self.dim, self.order = 4, 100000
         self.space = SymmetricPositiveDefiniteMatrices(dim=self.dim, order=self.order)
 
-        self.lengthscale, self.nu = 2.0, 5.0
+        self.lengthscale, self.nu = 20.0, 10+self.dim*(self.dim+1)/4
         self.measure = SqExpSpectralMeasure(self.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
 
@@ -27,4 +27,4 @@ class TestSPD(unittest.TestCase):
         cov_sampler = self.sampler._cov(self.x, self.x)
         print(cov_sampler)
         print(cov_kernel)
-        self.assertTrue(torch.allclose(cov_sampler, cov_kernel, atol=5e-2))
+        self.assertTrue(torch.allclose(cov_sampler, cov_kernel, atol=2e-2))

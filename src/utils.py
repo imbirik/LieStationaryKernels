@@ -1,6 +1,11 @@
 import torch
+from torch.distributions.distribution import Distribution
+from pyro.distributions.torch_distribution import TorchDistribution
+from torch.distributions.utils import broadcast_all
+from torch.distributions import constraints
+from pyro.distributions.rejector import Rejector
+from math import sqrt
 dtype = torch.double
-
 
 def GOE_sampler(num_samples, n):
     samples = torch.randn(num_samples, n, n, dtype=dtype)
@@ -86,9 +91,68 @@ def lazy_property(fn):
     return _lazy_property
 
 
+class GOE(TorchDistribution):
+    """Samples from distribution with pdf e^{-t*\lambda^2}\prod_{i<j} |\lambda_i-\lambda_j|"""
+    arg_constraints = {'scale': constraints.positive}
+    has_rsample = True
+
+    def __init__(self, dim, scale=1.0):
+        self.dim = dim
+        self.scale = broadcast_all(scale)[0]
+        super(GOE, self).__init__(event_shape=torch.Size([dim]))
+
+    def rsample(self, sample_shape=torch.Size()):
+        shape = self._extended_shape(sample_shape=sample_shape)
+        X = torch.randn(torch.Size((*shape, self.dim)), dtype=dtype)
+        M = (X + torch.transpose(X, -2, -1)) / sqrt(2)
+        eigenvalues = torch.linalg.eigvalsh(M)
+        return eigenvalues/self.scale
+
+    def log_prob(self, value):
+        value_diff = (value[:, None, :] - value[:, :, None])[triu_ind(value.size()[0], self.dim, 1)].\
+            reshape(-1, self.dim * (self.dim - 1) // 2)
+        log_prob = torch.sum(torch.log(torch.abs(value_diff))) - self.scale * torch.square(torch.linalg.norm(value))
+        return log_prob
+
+
+class StudentGOE(TorchDistribution):
+    """Samples from distribution with pdf (nu/scale^2+|\lambda|^2 + c)^{-\nu} \prod_{i < j} |\lambda_i-\lambda_j|"""
+    arg_constraints = {'scale': constraints.positive, 'nu': constraints.positive}
+    has_rsample = True
+
+    def __init__(self, dim, scale, nu, c):
+        self.dim = dim
+        self.scale, self.nu = broadcast_all(scale, nu)
+        self.shift = 1/torch.sqrt(c + 2 * self.nu / self.scale)
+
+        super(StudentGOE, self).__init__(event_shape=torch.Size([dim]))
+
+    def rsample(self, sample_shape=torch.Size()):
+        goe_samples = GOE(self.dim, self.shift).rsample(sample_shape)
+        chi2_samples = torch.distributions.chi2.Chi2(2 * self.nu).rsample(sample_shape)
+        chi_samples = torch.sqrt(chi2_samples)
+        return goe_samples / chi_samples[:, None]
+
+    def log_prob(self, value):
+        value_diff = (value[:, None, :] - value[:, :, None])[triu_ind(value.size()[0], self.dim, 1)].\
+            reshape(-1, self.dim * (self.dim - 1) // 2)
+        log_prob = torch.sum(torch.log(torch.abs(value_diff))) - \
+                   torch.log(torch.square(torch.linalg.norm(value))+self.shift) - self.nu
+        return log_prob
+
+
+
 if __name__ == "__main__":
-    x = torch.reshape(torch.arange(2 * 3 * 4), (2, 3, 4))
-    y = torch.reshape(torch.arange(3 * 3 * 4), (3, 3, 4))
-    x1, y1 = cartesian_prod(x, y)
-    print(x1, x1.shape)
-    print(y1, y1.shape)
+    dim = 5
+    def c_function_tanh(lmd):
+        lmd_ = (lmd[:, None, :] - lmd[:, :, None])[triu_ind(lmd.size()[0], dim, 1)].reshape(-1,
+                                                                                       dim * (dim - 1) // 2)
+        lmd_ = torch.pi * torch.abs(lmd_)
+        lmd_ = torch.tanh(lmd_)
+        c_function_tanh = torch.sum(torch.log(lmd_), dim=1)
+
+        return c_function_tanh
+
+    sampler = Rejector(GOE(dim=5), c_function_tanh, 0)
+    print(sampler.rsample((10,)))
+

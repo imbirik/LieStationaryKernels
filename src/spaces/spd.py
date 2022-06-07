@@ -1,10 +1,12 @@
 import torch
-import numpy as np
+from torch.nn import Parameter
+from pyro.distributions.rejector import Rejector
+
 from src.space import NonCompactSymmetricSpace, NonCompactSymmetricSpaceExp
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
-from scipy.stats import ortho_group
-from src.utils import GOE_sampler, triu_ind
-from scipy.stats import chi
+from src.utils import GOE, StudentGOE, triu_ind
+
+
 
 dtype = torch.double
 j = torch.tensor([1j]).item()  # imaginary unit
@@ -26,17 +28,13 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         shift = self.rand_phase(self.order)
         if isinstance(measure, MaternSpectralMeasure):
             nu, lengthscale = measure.nu, measure.lengthscale
-            goe_samples = GOE_sampler(self.order, self.dim)  # (order, dim)
-            chi_samples = torch.tensor(chi.rvs(nu[0].cpu().numpy(), self.order), dtype=dtype)  # (order,)
-            lmd = goe_samples/chi_samples[:, None]/lengthscale[0]
-            self.lb_eigenspaces = SPDShiftedNormailizedExp(lmd, shift, self)
+            lmd = SPDMaternSpectralMeasureSampler(self.dim, lengthscale, nu)((self.order,))
         elif isinstance(measure, SqExpSpectralMeasure):
             lengthscale = measure.lengthscale
-            goe_samples = GOE_sampler(self.order, self.dim)
-            lmd = goe_samples/lengthscale[0]
-            self.lb_eigenspaces = SPDShiftedNormailizedExp(lmd, shift, self)
+            lmd = SPDSqExpSpectralMeasureSampler(self.dim, lengthscale)((self.order,))
         else:
             return NotImplementedError
+        self.lb_eigenspaces = SPDShiftedExp(2*lmd, shift, self)
 
     def to_group(self, x):
         return torch.linalg.cholesky(x, upper=True)
@@ -60,8 +58,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         return torch.linalg.inv(x)
 
 
-
-class SPDShiftExp(NonCompactSymmetricSpaceExp):
+class SPDShiftedExp(NonCompactSymmetricSpaceExp):
         def __init__(self, lmd, shift, manifold):
             super().__init__(lmd=lmd, shift=shift, manifold=manifold)
 
@@ -86,25 +83,35 @@ class SPDShiftExp(NonCompactSymmetricSpaceExp):
             return h, a, n
 
 
-class SPDShiftedNormailizedExp(torch.nn.Module):
-    def __init__(self, lmd, shift, manifold):
-        super().__init__()
-        self.dim = manifold.dim
-        self.exp = SPDShiftExp(lmd, shift, manifold)
-        self.coeff = self.c_function_tanh(lmd)  # (m,)
+class SPDAbstractSpectralMeasureSampler(torch.nn.Module):
+    def __init__(self, dim):
+        self.dim = dim
+        super(SPDAbstractSpectralMeasureSampler, self).__init__()
 
-    def c_function_tanh(self, lmd):
-        lmd_ = (lmd[:, None, :] - lmd[:, :, None])[triu_ind(lmd.size()[0], self.dim, 1)].reshape(-1,
-                                                                                       self.dim * (self.dim - 1) // 2)
-        lmd_ = pi * torch.abs(lmd_)
-        lmd_ = torch.tanh(lmd_)
-        c_function_tanh = torch.sum(torch.log(lmd_), dim=1)
+    def log_accept(self, lmd):
+        lmd_diff = (lmd[:, None, :] - lmd[:, :, None])[triu_ind(lmd.size()[0], self.dim, 1)].\
+            reshape(-1, self.dim * (self.dim - 1) // 2)
+        log_accept = pi * torch.abs(lmd_diff)
+        log_accept = torch.tanh(log_accept)
+        log_accept = torch.sum(torch.log(log_accept), dim=1)
+        return log_accept
 
-        return torch.exp(c_function_tanh)
+    def forward(self, shape):
+        return Rejector(self.raw_sampler, self.log_accept, 0).rsample(shape)
 
-    def forward(self, x):
-        # x has shape (n, dim, dim)
 
-        exp = self.exp(x)  # (n, m)
-        return torch.einsum('nm,m->nm', exp, self.coeff)  # (n, m)
+class SPDMaternSpectralMeasureSampler(SPDAbstractSpectralMeasureSampler):
+    def __init__(self, dim, lengthscale, nu):
+        super(SPDMaternSpectralMeasureSampler, self).__init__(dim=dim)
+        self.lengthscale = Parameter(torch.tensor([lengthscale], dtype=dtype))
+        self.nu = Parameter(torch.tensor([nu], dtype=dtype))
+        c = (self.dim ** 3 - self.dim) / 48
+        self.raw_sampler = StudentGOE(self.dim, self.lengthscale[0], self.nu[0], c)
+
+
+class SPDSqExpSpectralMeasureSampler(SPDAbstractSpectralMeasureSampler):
+    def __init__(self, dim, lengthscale):
+        super(SPDSqExpSpectralMeasureSampler, self).__init__(dim=dim)
+        self.lengthscale = Parameter(torch.tensor([lengthscale], dtype=dtype))
+        self.raw_sampler = GOE(self.dim, self.lengthscale[0])
 

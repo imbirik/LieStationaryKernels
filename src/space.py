@@ -186,7 +186,7 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         self.rho = self.compute_rho()  # shape is (r,)
 
     def iwasawa_decomposition(self, x):
-        """For x in G computes Iwasawa decomposition x = n(x)a(x)h(x)"""
+        """For x in G computes Iwasawa decomposition x = h(x)a(x)n(x)"""
         raise NotImplementedError
 
     def compute_rho(self):

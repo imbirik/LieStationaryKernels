@@ -2,7 +2,6 @@ import torch
 #import functorch
 from torch.nn import Parameter
 
-
 class AbstractSpectralMeasure(torch.nn.Module):
     def __init__(self, dim):
         super(AbstractSpectralMeasure, self).__init__()
@@ -29,3 +28,5 @@ class SqExpSpectralMeasure(AbstractSpectralMeasure):
 
     def forward(self, eigenvalues):
         return torch.exp((-self.lengthscale[0] ** 2)/2 * eigenvalues)
+
+
