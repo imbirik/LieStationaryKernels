@@ -6,6 +6,7 @@ from torch.distributions import constraints
 from pyro.distributions.rejector import Rejector
 from math import sqrt
 dtype = torch.double
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GOE_sampler(num_samples, n):
     samples = torch.randn(num_samples, n, n, dtype=dtype)
@@ -103,7 +104,7 @@ class GOE(TorchDistribution):
 
     def rsample(self, sample_shape=torch.Size()):
         shape = self._extended_shape(sample_shape=sample_shape)
-        X = torch.randn(torch.Size((*shape, self.dim)), dtype=dtype)
+        X = torch.randn(torch.Size((*shape, self.dim)), dtype=dtype, device=device)
         M = (X + torch.transpose(X, -2, -1)) / sqrt(2)
         eigenvalues = torch.linalg.eigvalsh(M)
         return eigenvalues/self.scale

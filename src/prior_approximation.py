@@ -6,6 +6,7 @@ from src.utils import cartesian_prod
 from math import sqrt
 from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomFourierFeaturesKernel
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dtype = torch.double
 
 
@@ -106,7 +107,7 @@ class RandomFourierApproximation(torch.nn.Module):
         self.weights_imag = self.sample_weights()
 
     def sample_weights(self):
-        return torch.randn(self.kernel.manifold.order, dtype=dtype)
+        return torch.randn(self.kernel.manifold.order, dtype=dtype, device=device)
 
     def resample(self):
         self.weights_real = self.sample_weights()

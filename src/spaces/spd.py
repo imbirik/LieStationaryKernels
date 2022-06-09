@@ -9,6 +9,7 @@ from src.utils import GOE, StudentGOE, triu_ind
 
 
 dtype = torch.double
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 j = torch.tensor([1j]).item()  # imaginary unit
 pi = 2*torch.acos(torch.zeros(1)).item()
 
@@ -20,7 +21,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         super(SymmetricPositiveDefiniteMatrices, self).__init__()
         self.dim = dim
         self.order = order
-        self.id = torch.eye(self.dim, dtype=dtype).view(-1, self.dim, self.dim)
+        self.id = torch.eye(self.dim, dtype=dtype, device=device).view(-1, self.dim, self.dim)
 
         #self.lb_eigenspaces = None
 
@@ -40,7 +41,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         return torch.linalg.cholesky(x, upper=True)
 
     def rand_phase(self, n=1):
-        qr = torch.randn((n, self.dim, self.dim), dtype=dtype)
+        qr = torch.randn((n, self.dim, self.dim), dtype=dtype, device=device)
         q, r = torch.linalg.qr(qr)
         r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
         q *= r_diag_sign[:, None]
@@ -50,7 +51,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
 
     def rand(self, n=1):
         """Note, there is no standard method to sample from SPD"""
-        rand = torch.randn(n, self.dim, self.dim, dtype=dtype)
+        rand = torch.randn(n, self.dim, self.dim, dtype=dtype, device=device)
         rand_pos = torch.bmm(rand, torch.transpose(rand, -2, -1))
         return rand_pos
 
@@ -61,9 +62,9 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
 class SPDShiftedExp(NonCompactSymmetricSpaceExp):
         def __init__(self, lmd, shift, manifold):
             super().__init__(lmd=lmd, shift=shift, manifold=manifold)
-
         def compute_rho(self):
-            rho = torch.tensor([(i + 1) - (self.manifold.dim + 1) / 2 for i in range(self.manifold.dim)], dtype=dtype)
+            rho = torch.tensor([(i + 1) - (self.manifold.dim + 1) / 2 for i in range(self.manifold.dim)],
+                               dtype=dtype, device=device)
             return rho
 
         def iwasawa_decomposition(self, x):
@@ -97,14 +98,15 @@ class SPDAbstractSpectralMeasureSampler(torch.nn.Module):
         return log_accept
 
     def forward(self, shape):
-        return Rejector(self.raw_sampler, self.log_accept, 0).rsample(shape)
+        samples = Rejector(self.raw_sampler, self.log_accept, 0).rsample(shape)
+        return samples
 
 
 class SPDMaternSpectralMeasureSampler(SPDAbstractSpectralMeasureSampler):
     def __init__(self, dim, lengthscale, nu):
         super(SPDMaternSpectralMeasureSampler, self).__init__(dim=dim)
-        self.lengthscale = Parameter(torch.tensor([lengthscale], dtype=dtype))
-        self.nu = Parameter(torch.tensor([nu], dtype=dtype))
+        self.lengthscale = Parameter(torch.tensor([lengthscale], dtype=dtype, device=device))
+        self.nu = Parameter(torch.tensor([nu], dtype=dtype, device=device))
         c = (self.dim ** 3 - self.dim) / 48
         self.raw_sampler = StudentGOE(self.dim, self.lengthscale[0], self.nu[0], c)
 
