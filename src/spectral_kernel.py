@@ -8,6 +8,7 @@ from src.space import AbstractManifold
 from src.utils import cartesian_prod
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#device = 'cpu'
 dtype = torch.complex128
 #device = torch.device('cuda')
 

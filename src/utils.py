@@ -7,9 +7,10 @@ from pyro.distributions.rejector import Rejector
 from math import sqrt
 dtype = torch.double
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#device = 'cpu'
 
 def GOE_sampler(num_samples, n):
-    samples = torch.randn(num_samples, n, n, dtype=dtype)
+    samples = torch.randn(num_samples, n, n, device=device, dtype=dtype)
     samples = (samples + torch.transpose(samples, -2, -1))/2
     eigenvalues = torch.linalg.eigvalsh(samples, UPLO='U')
     return eigenvalues
