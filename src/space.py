@@ -96,7 +96,7 @@ class NonCompactSymmetricSpace(AbstractManifold, ABC):
         raise NotImplementedError
 
     def pairwise_diff(self, x, y):
-        """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
+        """for x of size n and y of size m computes x_i-y_j and represent as array [n*m,...]"""
         y_inv = self.inv(y)
         x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
 

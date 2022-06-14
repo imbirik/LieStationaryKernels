@@ -1,6 +1,6 @@
 import unittest
 import torch
-from src.spaces.spd import SymmetricPositiveDefiniteMatrices, SPDShiftExp
+from src.spaces.hyperbolic import HyperbolicSpace, HypShiftExp
 from src.spectral_kernel import RandomFourierFeaturesKernel
 from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
@@ -9,13 +9,13 @@ dtype = torch.double
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 
-class TestSPD(unittest.TestCase):
+class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dim, self.order = 5, 100000
-        self.space = SymmetricPositiveDefiniteMatrices(dim=self.dim, order=self.order)
+        self.dim, self.order = 3, 1000000
+        self.space = HyperbolicSpace(dim=self.dim, order=self.order)
 
-        self.lengthscale, self.nu = 10.0, 5.0
+        self.lengthscale, self.nu = 10.0, 5.0 + self.dim
         #self.measure = SqExpSpectralMeasure(self.dim, self.lengthscale)
         self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
 
@@ -36,8 +36,8 @@ class TestSPD(unittest.TestCase):
         self.y = self.x
         print(self.kernel.normalizer)
         shift = self.space.rand_phase(self.order)
-        lmd = torch.randn(1, self.dim, device=device, dtype=dtype).repeat(self.order, 1)
-        exp = SPDShiftExp(lmd, shift, self.space)
+        lmd = torch.randn(1, device=device, dtype=dtype).repeat(self.order)
+        exp = HypShiftExp(lmd, shift, self.space)
 
         x_, y_ = self.space.to_group(self.x), self.space.to_group(self.y)
         x_embed, y_embed = exp(x_), exp(y_)

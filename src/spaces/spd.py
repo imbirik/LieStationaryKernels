@@ -20,7 +20,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         super(SymmetricPositiveDefiniteMatrices, self).__init__()
         self.dim = dim
         self.order = order
-        self.id = torch.eye(self.dim, device=device, dtype=dtype).view(-1, self.dim, self.dim)
+        self.id = torch.eye(self.dim, device=device, dtype=dtype).view(1, self.dim, self.dim)
 
         #self.lb_eigenspaces = None
 
@@ -57,14 +57,19 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from SPD
             We sample random matrix M=XX^T X_{ij}\sim N(0,1)
             and normalize in such a way that \E(det M) = 1 (see https://mathoverflow.net/questions/13008/)"""
-        rand = torch.randn(n, self.dim, self.dim, device=device, dtype=dtype) *\
-               4 / (factorial(self.dim+1) ** (1/self.dim))
-        rand_pos = torch.bmm(rand, torch.transpose(rand, -2, -1))
+        rand = torch.randn(n, self.dim, self.dim, device=device, dtype=dtype)
+        rand_pos = torch.bmm(rand, torch.transpose(rand, -2, -1)) * \
+                   4 / (factorial(self.dim+1) ** (1/self.dim))
         return rand_pos
 
     def inv(self, x):
         return torch.linalg.inv(x)
 
+    def _dist_to_id(self, x):
+        eig = torch.linalg.eigvalsh(x)
+        sq_log_eig = torch.square(torch.log(eig))
+        dist = torch.sum(sq_log_eig, dim=1)
+        return dist
 
 
 class SPDShiftExp(NonCompactSymmetricSpaceExp):
@@ -107,7 +112,7 @@ class SPDShiftedNormailizedExp(torch.nn.Module):
         lmd_ = torch.tanh(lmd_)
         c_function_tanh = torch.sum(torch.log(lmd_), dim=1)
 
-        return torch.exp(c_function_tanh)
+        return torch.exp(c_function_tanh/2)
 
     def forward(self, x):
         # x has shape (n, dim, dim)
