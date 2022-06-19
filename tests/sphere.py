@@ -1,6 +1,8 @@
 import unittest
 import torch
-import functorch
+#from functorch import vmap
+from torch.autograd.functional import _vmap as vmap
+
 import numpy as np
 from src.spaces.sphere import Sphere
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
@@ -39,7 +41,7 @@ class TestSphere(unittest.TestCase):
 
     def test_sampler(self):
         true_ans = torch.ones(self.n, dtype=dtype)
-        self.assertTrue(torch.allclose(functorch.vmap(torch.dot)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(vmap(torch.dot)(self.x, self.x), true_ans))
 
     def test_harmonics(self):
         n = 100000

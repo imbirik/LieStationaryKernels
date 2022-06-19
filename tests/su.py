@@ -1,7 +1,8 @@
 import unittest
 import torch
-from torch import vmap
+#from torch import vmap
 # from functorch import vmap
+from torch.autograd.functional import _vmap as vmap
 import numpy as np
 from src.spaces.su import SU
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
@@ -10,6 +11,7 @@ from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
 
 dtype = torch.cdouble
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class TestSU(unittest.TestCase):
@@ -30,7 +32,7 @@ class TestSU(unittest.TestCase):
         self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
 
     def test_sampler(self):
-        true_ans = torch.eye(self.dim, dtype=dtype).reshape((1, self.dim, self.dim)).repeat(self.n, 1, 1)
+        true_ans = torch.eye(self.dim, dtype=dtype, device=device).reshape((1, self.dim, self.dim)).repeat(self.n, 1, 1)
         self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans))
 
     def test_prior(self) -> None:

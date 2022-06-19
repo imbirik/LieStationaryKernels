@@ -21,6 +21,13 @@ def triu_ind(m, n, offset):
     triu_indices = a.triu(diagonal=offset).nonzero().transpose(0, 1)
     return triu_indices[0], triu_indices[1], triu_indices[2]
 
+def vander_det(x):
+    """ computing of \prod_{i < j} x_i - x_j"""
+    dim = x.size()[1]
+    x_ = (x[:, :, None] - x[:, None, :])[triu_ind(x.size()[0], dim, 1)].reshape(-1, dim * (dim - 1) // 2)
+    res = torch.prod(x_, dim=1)
+    return res
+
 
 def cartesian_prod(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
     '''

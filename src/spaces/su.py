@@ -5,8 +5,9 @@ from functools import reduce
 import operator
 import math
 import itertools
-
+from src.utils import vander_det
 dtype = torch.cdouble
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class SU(LieGroup):
@@ -33,7 +34,7 @@ class SU(LieGroup):
         return x @ y.mH
 
     def rand(self, n=1):
-        h = torch.randn((n, self.dim, self.dim), dtype=dtype)
+        h = torch.randn((n, self.dim, self.dim), dtype=dtype, device=device)
         q, r = torch.linalg.qr(h)
         r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
         r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
@@ -103,7 +104,7 @@ class SUCharacter(LieGroupCharacter):
         gammas = self.torus_embed(x)
         qs = [pk + dim - k - 1 for k, pk in enumerate(signature)]
         numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
-        vander = torch.tensor([reduce(operator.mul, (gi - gj for gi, gj in itertools.combinations(gamma, r=2)), 1) for gamma in gammas])
+        vander = vander_det(gammas)
         return torch.det(numer_mat) / vander
 
     @staticmethod
@@ -111,7 +112,7 @@ class SUCharacter(LieGroupCharacter):
         d = x.shape[1]  # x = [n,d,d]
         x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
 
-        eye = torch.reshape(torch.torch.eye(d, dtype=dtype).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
+        eye = torch.reshape(torch.torch.eye(d, dtype=dtype, device=device).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
         eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
 
         return torch.all(torch.isclose(x_, eyes), dim=1)

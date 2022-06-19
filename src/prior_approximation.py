@@ -2,6 +2,7 @@ import torch
 import warnings
 from itertools import islice
 # from functorch import vmap
+
 from src.utils import cartesian_prod
 from math import sqrt
 from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomFourierFeaturesKernel
@@ -67,7 +68,7 @@ class RandomPhaseApproximation(torch.nn.Module):
         self.phases = self.sample_phases()
 
     def sample_weights(self):
-        return torch.randn(self.phase_order*self.approx_order)
+        return torch.randn(self.phase_order*self.approx_order, device=device, dtype=dtype)
 
     def sample_phases(self):
         return [self.kernel.manifold.rand(self.phase_order) for _ in range(self.approx_order)]
