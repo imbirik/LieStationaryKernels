@@ -63,8 +63,8 @@ class LieGroup(AbstractManifold, ABC):
         y_inv = self.inv(y)
         x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,...] and [n,m,...]
 
-        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
+        x_flatten = torch.reshape(x_, (-1, self.n, self.n))
+        y_inv_flatten = torch.reshape(y_inv_, (-1, self.n, self.n))
 
         x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
         return x_yinv
@@ -100,8 +100,8 @@ class NonCompactSymmetricSpace(AbstractManifold, ABC):
         y_inv = self.inv(y)
         x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
 
-        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
+        x_flatten = torch.reshape(x_, (-1, self.n, self.n))
+        y_inv_flatten = torch.reshape(y_inv_, (-1, self.n, self.n))
 
         x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
         return x_yinv
@@ -182,7 +182,7 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         self.manifold = manifold
 
         self.order = lmd.size()[0]
-        self.dim = self.manifold.dim
+        self.n = self.manifold.n
         self.rho = self.compute_rho()  # shape is (r,)
 
     def iwasawa_decomposition(self, x):
@@ -211,7 +211,7 @@ class LieGroupCharacter(torch.nn.Module, ABC):
         super().__init__()
         self.representation = representation
 
-    def chi(self, x, y):
+    def chi(self, x):
         raise NotImplementedError
 
     def forward(self, x):

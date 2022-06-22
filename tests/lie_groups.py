@@ -1,7 +1,8 @@
 import unittest
 from parameterized import parameterized_class
 import torch
-from functorch import vmap
+#from functorch import vmap
+from torch.autograd.functional import _vmap as vmap
 import numpy as np
 
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
