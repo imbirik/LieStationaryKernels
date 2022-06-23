@@ -16,11 +16,12 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
     """Class of Positive definite matrices represented as symmetric space GL(n,R)/O(n,R)"""
 
-    def __init__(self, dim: int, order: int):
+    def __init__(self, n: int, order: int):
         super(SymmetricPositiveDefiniteMatrices, self).__init__()
-        self.dim = dim
+        self.n = n
+        self.dim = n * (n+1)//2
         self.order = order
-        self.id = torch.eye(self.dim, device=device, dtype=dtype).view(1, self.dim, self.dim)
+        self.id = torch.eye(self.n, device=device, dtype=dtype).view(1, self.n, self.n)
 
         #self.lb_eigenspaces = None
 
@@ -28,14 +29,14 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         shift = self.rand_phase(self.order)
         if isinstance(measure, MaternSpectralMeasure):
             nu, lengthscale = measure.nu[0], measure.lengthscale[0]
-            scale = 1/torch.sqrt((self.dim ** 3 - self.dim)/48 + 2 * nu / lengthscale)
-            goe_samples = GOE_sampler(self.order, self.dim)  # (order, dim)
+            scale = 1/torch.sqrt((self.n ** 3 - self.n)/48 + 2 * nu / lengthscale)
+            goe_samples = GOE_sampler(self.order, self.n)  # (order, dim)
             chi2_samples = torch.distributions.chi2.Chi2(2 * nu).rsample((self.order,))
             chi_samples = torch.sqrt(chi2_samples)  # (order,)
             lmd = goe_samples/chi_samples[:, None] / scale
         elif isinstance(measure, SqExpSpectralMeasure):
             scale = measure.lengthscale
-            goe_samples = GOE_sampler(self.order, self.dim)
+            goe_samples = GOE_sampler(self.order, self.n)
             lmd = goe_samples/scale
         else:
             return NotImplementedError
@@ -45,7 +46,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         return torch.linalg.cholesky(x, upper=True)
 
     def rand_phase(self, n=1):
-        qr = torch.randn((n, self.dim, self.dim),device=device, dtype=dtype)
+        qr = torch.randn((n, self.n, self.n),device=device, dtype=dtype)
         q, r = torch.linalg.qr(qr)
         r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
         q *= r_diag_sign[:, None]
@@ -57,9 +58,9 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from SPD
             We sample random matrix M=XX^T X_{ij}\sim N(0,1)
             and normalize in such a way that \E(det M) = 1 (see https://mathoverflow.net/questions/13008/)"""
-        rand = torch.randn(n, self.dim, self.dim, device=device, dtype=dtype)
+        rand = torch.randn(n, self.n, self.n, device=device, dtype=dtype)
         rand_pos = torch.bmm(rand, torch.transpose(rand, -2, -1)) * \
-                   4 / (factorial(self.dim+1) ** (1/self.dim))
+                   4 / (factorial(self.n+1) ** (1/self.n))
         return rand_pos
 
     def inv(self, x):
@@ -77,7 +78,7 @@ class SPDShiftExp(NonCompactSymmetricSpaceExp):
             super().__init__(lmd=lmd, shift=shift, manifold=manifold)
 
         def compute_rho(self):
-            rho = torch.tensor([(i + 1) - (self.manifold.dim + 1) / 2 for i in range(self.manifold.dim)],
+            rho = torch.tensor([(i + 1) - (self.manifold.n + 1) / 2 for i in range(self.manifold.n)],
                                device=device, dtype=dtype)
             return rho
 
@@ -101,13 +102,13 @@ class SPDShiftExp(NonCompactSymmetricSpaceExp):
 class SPDShiftedNormailizedExp(torch.nn.Module):
     def __init__(self, lmd, shift, manifold):
         super().__init__()
-        self.dim = manifold.dim
+        self.n = manifold.n
         self.exp = SPDShiftExp(lmd, shift, manifold)
         self.coeff = self.c_function_tanh(lmd)  # (m,)
 
     def c_function_tanh(self, lmd):
-        lmd_ = (lmd[:, None, :] - lmd[:, :, None])[triu_ind(lmd.size()[0], self.dim, 1)].reshape(-1,
-                                                                                       self.dim * (self.dim - 1) // 2)
+        lmd_ = (lmd[:, None, :] - lmd[:, :, None])[triu_ind(lmd.size()[0], self.n, 1)].reshape(-1,
+                                                                                       self.n * (self.n - 1) // 2)
         lmd_ = pi * torch.abs(lmd_)
         lmd_ = torch.tanh(lmd_)
         c_function_tanh = torch.sum(torch.log(lmd_), dim=1)

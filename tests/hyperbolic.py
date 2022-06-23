@@ -12,17 +12,17 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dim, self.order = 3, 1000000
-        self.space = HyperbolicSpace(dim=self.dim, order=self.order)
+        self.n, self.order = 5, 1000000
+        self.space = HyperbolicSpace(n=self.n, order=self.order)
 
-        self.lengthscale, self.nu = 10.0, 5.0 + self.dim
-        #self.measure = SqExpSpectralMeasure(self.dim, self.lengthscale)
-        self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
+        self.lengthscale, self.nu = 5.0, 5.0 + self.space.dim
+        self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
+        #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.kernel = RandomFourierFeaturesKernel(self.measure, self.space)
         self.sampler = RandomFourierApproximation(self.kernel)
-        self.n, self.m = 5, 5
-        self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
+        self.x_size, self.y_size = 5, 5
+        self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
 
     def test_kernel(self):
         print(self.space._dist_to_id(self.x))

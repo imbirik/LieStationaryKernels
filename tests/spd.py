@@ -17,7 +17,10 @@ np.set_printoptions(precision=3)
 
 def heat_kernel(x1, x2, t=1.0):
     def heat_kernel_unnorm(x1, x2, t=1.0):
-        _, singular_values, _ = np.linalg.svd(x1.dot(np.linalg.inv(x2)))
+        cl_1 = np.linalg.cholesky(x1)
+        cl_2 = np.linalg.cholesky(x2)
+        diff = np.linalg.inv(cl_1) @ cl_2
+        _, singular_values, _ = np.linalg.svd(diff)
         # Note: singular values that np.linalg.svd outputs are sorted, the following
         # code relies on this fact.
         H1, H2 = np.log(singular_values[0]), np.log(singular_values[1])
@@ -58,17 +61,17 @@ def heat_kernel(x1, x2, t=1.0):
 class TestSPD(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dim, self.order = 2, 100000
-        self.space = SymmetricPositiveDefiniteMatrices(dim=self.dim, order=self.order)
+        self.n, self.order = 2, 10000
+        self.space = SymmetricPositiveDefiniteMatrices(n=self.n, order=self.order)
 
-        self.lengthscale, self.nu = 4.0, 5.0
-        self.measure = SqExpSpectralMeasure(self.dim, self.lengthscale)
-        #self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
+        self.lengthscale, self.nu = 2.0, 5.0
+        self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
+        #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.kernel = RandomFourierFeaturesKernel(self.measure, self.space)
         self.sampler = RandomFourierApproximation(self.kernel)
-        self.n, self.m = 5, 5
-        self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
+        self.x_size, self.y_size = 5, 5
+        self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
 
     def test_kernel(self):
         print(self.space._dist_to_id(self.x))
@@ -82,7 +85,7 @@ class TestSPD(unittest.TestCase):
         self.y = self.x
         print(self.kernel.normalizer)
         shift = self.space.rand_phase(self.order)
-        lmd = torch.randn(1, self.dim, device=device, dtype=dtype).repeat(self.order, 1)
+        lmd = torch.randn(1, self.n, device=device, dtype=dtype).repeat(self.order, 1)
         exp = SPDShiftExp(lmd, shift, self.space)
 
         x_, y_ = self.space.to_group(self.x), self.space.to_group(self.y)
@@ -100,13 +103,13 @@ class TestSPD(unittest.TestCase):
         self.assertTrue(torch.allclose(cov1, cov2, atol=1e-2))
 
     def test_compare_with_sawyer(self):
-        assert self.dim == 2, "dim should be equal to 2"
+        assert self.n == 2, "dim should be equal to 2"
         cov_kernel = self.kernel(self.x, self.x).cpu().detach().numpy()
         print(cov_kernel)
-        cov_sawyer = np.zeros((self.n, self.n))
-        for i in range(self.n):
-            for j in range(self.n):
+        cov_sawyer = np.zeros((self.x_size, self.x_size))
+        for i in range(self.x_size):
+            for j in range(self.x_size):
                 x_i, x_j = self.x[i].cpu().detach().numpy(), self.x[j].cpu().detach().numpy()
-                cov_sawyer[i][j] = heat_kernel(x1=x_i, x2=x_j, t=self.lengthscale*self.lengthscale)
+                cov_sawyer[i][j] = heat_kernel(x1=x_i, x2=x_j, t=self.lengthscale*self.lengthscale/4)
         print(cov_sawyer)
         self.assertTrue(np.allclose(cov_kernel, cov_sawyer))
