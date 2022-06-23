@@ -24,11 +24,11 @@ class SO(CompactLieGroup):
         """
         if dim <= 2 or dim == 4:
             raise ValueError("Dimensions 1, 2, 4 are not supported")
-        self.dim = dim
+        self.n = dim
         self.rank = dim // 2
         self.order = order
         self.Eigenspace = SOLBEigenspace
-        if self.dim % 2 == 0:
+        if self.n % 2 == 0:
             self.rho = np.arange(self.rank-1, -1, -1)
         else:
             self.rho = np.arange(self.rank-1, -1, -1) + 0.5
@@ -41,7 +41,7 @@ class SO(CompactLieGroup):
         raise NotImplementedError
 
     def rand(self, n=1):
-        h = torch.randn((n, self.dim, self.dim), device=device, dtype=dtype)
+        h = torch.randn((n, self.n, self.n), device=device, dtype=dtype)
         q, r = torch.linalg.qr(h)
         r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
         q *= r_diag_sign[:, None]
@@ -57,7 +57,7 @@ class SO(CompactLieGroup):
         :return signatures: signatures of representations likely having the smallest LB eigenvalues
         """
         signatures = []
-        if self.dim == 3:
+        if self.n == 3:
             signature_sum = order
         else:
             signature_sum = 20
@@ -66,7 +66,7 @@ class SO(CompactLieGroup):
                 for signature in fixed_length_partitions(signature_sum, i):
                     signature.extend([0] * (self.rank-i))
                     signatures.append(tuple(signature))
-                    if self.dim % 2 == 0 and signature[-1] != 0:
+                    if self.n % 2 == 0 and signature[-1] != 0:
                         signature[-1] = -signature[-1]
                         signatures.append(tuple(signature))
         return signatures

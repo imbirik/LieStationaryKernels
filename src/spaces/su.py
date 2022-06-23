@@ -20,12 +20,12 @@ class SU(CompactLieGroup):
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
-        self.dim = dim
+        self.n = dim
         self.rank = dim-1
         self.order = order
         self.Eigenspace = SULBEigenspace
 
-        self.rho = np.arange(self.dim - 1, -self.dim, -2) * 0.5
+        self.rho = np.arange(self.n - 1, -self.n, -2) * 0.5
 
         super().__init__(order=order)
 
@@ -36,7 +36,7 @@ class SU(CompactLieGroup):
         return x @ y.mH
 
     def rand(self, n=1):
-        h = torch.randn((n, self.dim, self.dim), dtype=dtype, device=device)
+        h = torch.randn((n, self.n, self.n), dtype=dtype, device=device)
         q, r = torch.linalg.qr(h)
         r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
         r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
@@ -53,7 +53,7 @@ class SU(CompactLieGroup):
         :param int order: number of eigenfunctions that will be returned
         :return signatures: signatures of representations likely having the smallest LB eigenvalues
         """
-        sign_vals_lim = order if self.dim == 1 else 10 if self.dim == 2 else 5
+        sign_vals_lim = order if self.n == 1 else 10 if self.n == 2 else 5
         signatures = list(itertools.combinations_with_replacement(range(sign_vals_lim, -1, -1), r=self.rank))
         signatures = [sgn + (0,) for sgn in signatures]
         signatures.sort()
@@ -79,7 +79,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         signature = self.index
         su = self.manifold
         rep_dim = reduce(operator.mul, (reduce(operator.mul, (signature[i - 1] - signature[j - 1] + j - i for j in
-                                                              range(i + 1, su.dim + 1))) / math.factorial(su.dim - i)
+                                                              range(i + 1, su.n + 1))) / math.factorial(su.n - i)
                                         for i in range(1, su.dim)))
         return int(round(rep_dim))
 
@@ -89,7 +89,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        if self.manifold.dim == 2:
+        if self.manifold.n == 2:
             return SU2Character(representation=self)
         else:
             return SUCharacter(representation=self)
@@ -103,11 +103,11 @@ class SUCharacter(LieGroupCharacter):
         return torch.linalg.eigvals(x)
 
     def chi(self, x):
-        dim = self.representation.manifold.dim
+        n = self.representation.manifold.n
         signature = self.representation.index
         # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
         gammas = self.torus_embed(x)
-        qs = [pk + dim - k - 1 for k, pk in enumerate(signature)]
+        qs = [pk + n - k - 1 for k, pk in enumerate(signature)]
         numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
         vander = vander_det2(gammas)
         return torch.det(numer_mat) / vander
