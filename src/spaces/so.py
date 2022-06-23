@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions
-from src.space import LieGroup, LBEigenspaceWithSum, LieGroupCharacter
+from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
 from functools import reduce
 import operator
 import math
@@ -14,7 +14,7 @@ dtype = torch.double
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class SO(LieGroup):
+class SO(CompactLieGroup):
     """SO(dim), special orthogonal group of degree dim."""
 
     def __init__(self, dim: int, order: int):
@@ -120,9 +120,9 @@ class SOCharacter(LieGroupCharacter):
     def torus_embed(x):
         #TODO :check
         eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=1).indices[:, :, 0]
+        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=-1).indices[..., 0]
         eigv = torch.gather(eigv, dim=1, index=sorted_ind)
-        gamma = eigv[:, 0:-1:2]
+        gamma = eigv[..., 0:-1:2]
         return gamma
 
     @staticmethod
@@ -157,13 +157,10 @@ class SOCharacter(LieGroupCharacter):
 
     @staticmethod
     def close_to_eye(x):
-        d = x.shape[1]  # x = [n,d,d]
-        x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
-
-        eye = torch.reshape(torch.torch.eye(d, dtype=dtype, device=device).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
-        eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
-
-        return torch.all(torch.isclose(x_, eyes), dim=1)
+        d = x.shape[-1]  # x = [...,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes), dim=-1)
 
 
 class SO3Character(LieGroupCharacter):
@@ -182,10 +179,7 @@ class SO3Character(LieGroupCharacter):
 
     @staticmethod
     def close_to_eye(x):
-        d = x.shape[1]  # x = [n,d,d]
-        x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
-
-        eye = torch.reshape(torch.torch.eye(d, dtype=dtype, device=device).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
-        eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
-
-        return torch.all(torch.isclose(x_, eyes), dim=1)
+        d = x.shape[-1]  # x = [...,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes), dim=-1)

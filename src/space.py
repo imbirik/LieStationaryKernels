@@ -36,7 +36,7 @@ class AbstractManifold(torch.nn.Module, ABC):
         raise NotImplementedError
 
 
-class LieGroup(AbstractManifold, ABC):
+class CompactLieGroup(AbstractManifold, ABC):
     """Lie group abstract base class"""
     def __init__(self, *, order: int):
         """
@@ -72,39 +72,6 @@ class LieGroup(AbstractManifold, ABC):
 
 class HomogeneousSpace(AbstractManifold, ABC):
     pass
-
-
-class NonCompactSymmetricSpace(AbstractManifold, ABC):
-    """Symmetric space of form G/H abstract class"""
-    def __init__(self):
-        super().__init__()
-        #self.lb_eigenspaces = None  # will be generated with respect to spectral measure
-
-    def dist(self, x, y):
-        raise NotImplementedError
-
-    def generate_lb_eigenspaces(self, measure):
-        """Generates Eigenspaces with respect to the measure"""
-        raise NotImplementedError
-
-    def rand_factor(self, n=1):
-        """ Generate elements from H with respect to Haar measure on H """
-        raise NotImplementedError
-
-    def inv(self, x):
-        """ For element x in G calculate x^{-1}"""
-        raise NotImplementedError
-
-    def pairwise_diff(self, x, y):
-        """for x of size n and y of size m computes x_i-y_j and represent as array [n*m,...]"""
-        y_inv = self.inv(y)
-        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
-
-        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
-
-        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
-        return x_yinv
 
 
 class LBEigenfunction(ABC):
@@ -147,7 +114,20 @@ class LBEigenspace(ABC):
         raise NotImplementedError
 
 
-class LBEigenspaceWithBasis(LBEigenspace, ABC):
+class LBEigenspaceWithSum(LBEigenspace, ABC):
+    """Laplace-Beltrami eigenspace ABC in case the sum function of an orthonormal basis paired products is available"""
+    @lazy_property
+    def basis_sum(self):
+        basis_sum = self.compute_basis_sum()
+        return basis_sum
+
+    @abstractmethod
+    def compute_basis_sum(self):
+        """Compute the sum of the orthonormal basis paired products."""
+        raise NotImplementedError
+
+
+class LBEigenspaceWithBasis(LBEigenspaceWithSum, ABC):
     """Laplace-Beltrami eigenspace ABC in case orthonormal basis is available"""
     @lazy_property
     def basis(self):
@@ -160,17 +140,84 @@ class LBEigenspaceWithBasis(LBEigenspace, ABC):
         raise NotImplementedError
 
 
-class LBEigenspaceWithSum(LBEigenspace, ABC):
-    """Laplace-Beltrami eigenspace ABC in case the sum function of an orthonormal basis paired products is available"""
-    @lazy_property
-    def basis_sum(self):
-        basis_sum = self.compute_basis_sum()
-        return basis_sum
+class LieGroupCharacter(torch.nn.Module, ABC):
+    """Lie group representation character abstract base class"""
+    def __init__(self, *, representation: LBEigenspace):
+        super().__init__()
+        self.representation = representation
 
-    @abstractmethod
-    def compute_basis_sum(self):
-        """Compute the sum of the orthonormal basis paired products."""
+    def chi(self, x):
         raise NotImplementedError
+
+    def forward(self, x):
+        # [n, dim, dim]
+        chi = self.representation.dimension * self.chi(x)  # [n]
+
+        close_to_eye = self.close_to_eye(x)  # [n]
+
+        chi = torch.where(close_to_eye, self.representation.dimension**2 * torch.ones_like(chi), chi)
+        return chi
+
+
+class TranslatedCharactersBasis(torch.nn.Module):
+    def __init__(self, *, representation: LBEigenspaceWithBasis):
+        super().__init__()
+        self.representation = representation
+        dim = self.representation.dimension
+        self.character = self.representation.basis_sum
+        gram_is_spd = False
+        attempts = 0
+        while not gram_is_spd:
+            attempts += 1
+            self.translations = self.representation.manifold.rand(dim**2)
+            ratios = self.representation.manifold.pairwise_diff(self.translations, self.translations)
+            gram = self.character.forward(ratios).reshape(dim**2, dim**2)
+            try:
+                self.coeffs = torch.linalg.inv(torch.linalg.cholesky(gram))
+                gram_is_spd = True
+            except RuntimeError:
+                if attempts >= 3:
+                    raise
+
+    def forward(self, x):
+        x_unsq = x.unsqueeze(1)
+        tr_unsq = self.translations.unsqueeze(0)
+        x_translates = torch.matmul(tr_unsq, x_unsq)
+        characters = self.character.forward(x_translates)
+        return torch.matmul(self.coeffs, characters.T).T
+
+
+class NonCompactSymmetricSpace(AbstractManifold, ABC):
+    """Symmetric space of form G/H abstract class"""
+    def __init__(self):
+        super().__init__()
+        #self.lb_eigenspaces = None  # will be generated with respect to spectral measure
+
+    def dist(self, x, y):
+        raise NotImplementedError
+
+    def generate_lb_eigenspaces(self, measure):
+        """Generates Eigenspaces with respect to the measure"""
+        raise NotImplementedError
+
+    def rand_factor(self, n=1):
+        """ Generate elements from H with respect to Haar measure on H """
+        raise NotImplementedError
+
+    def inv(self, x):
+        """ For element x in G calculate x^{-1}"""
+        raise NotImplementedError
+
+    def pairwise_diff(self, x, y):
+        """for x of size n and y of size m computes x_i-y_j and represent as array [n*m,...]"""
+        y_inv = self.inv(y)
+        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
+
+        x_flatten = torch.reshape(x_, (-1, self.dim, self.dim))
+        y_inv_flatten = torch.reshape(y_inv_, (-1, self.dim, self.dim))
+
+        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
+        return x_yinv
 
 
 class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
@@ -203,22 +250,3 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         lin_func = j*self.lmd + self.rho[None, :] # (m, rank)
         inner_prod = torch.einsum('nmr,mr->nm', a, lin_func)
         return torch.exp(inner_prod)  # shape (n, m)
-
-
-class LieGroupCharacter(torch.nn.Module, ABC):
-    """Lie group representation character abstract base class"""
-    def __init__(self, *, representation: LBEigenspace):
-        super().__init__()
-        self.representation = representation
-
-    def chi(self, x, y):
-        raise NotImplementedError
-
-    def forward(self, x):
-        # [n, dim, dim]
-        chi = self.representation.dimension * self.chi(x)  # [n]
-
-        close_to_eye = self.close_to_eye(x)  # [n]
-
-        chi = torch.where(close_to_eye, self.representation.dimension**2 * torch.ones_like(chi), chi)
-        return chi

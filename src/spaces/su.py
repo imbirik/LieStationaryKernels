@@ -1,16 +1,18 @@
 import torch
+from functorch import vmap
 import numpy as np
-from src.space import LieGroup, LBEigenspaceWithSum, LieGroupCharacter
+from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
 from functools import reduce
 import operator
 import math
 import itertools
-from src.utils import vander_det
+from src.utils import vander_det, vander_det2, poly_eval_tensor
+from scipy.special import chebyu
 dtype = torch.cdouble
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class SU(LieGroup):
+class SU(CompactLieGroup):
     """SU(dim), special unitary group of degree dim."""
 
     def __init__(self, dim: int, order: int):
@@ -40,7 +42,7 @@ class SU(LieGroup):
         r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
         q *= r_diag_inv_phase[:, None]
         q_det = torch.det(q)
-        q_det_inv_phase = torch.conj(q_det / torch.abs((q_det)))
+        q_det_inv_phase = torch.conj(q_det / torch.abs(q_det))
         q[:, :, 0] *= q_det_inv_phase[:, None]
         return q
 
@@ -87,7 +89,10 @@ class SULBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        return SUCharacter(representation=self)
+        if self.manifold.dim == 2:
+            return SU2Character(representation=self)
+        else:
+            return SUCharacter(representation=self)
 
 
 class SUCharacter(LieGroupCharacter):
@@ -104,15 +109,33 @@ class SUCharacter(LieGroupCharacter):
         gammas = self.torus_embed(x)
         qs = [pk + dim - k - 1 for k, pk in enumerate(signature)]
         numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
-        vander = vander_det(gammas)
+        vander = vander_det2(gammas)
         return torch.det(numer_mat) / vander
 
     @staticmethod
     def close_to_eye(x):
-        d = x.shape[1]  # x = [n,d,d]
-        x_ = x.reshape((x.shape[0], -1))  # [n, d * d]
+        d = x.shape[-1]  # x = [...,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes), dim=-1)
 
-        eye = torch.reshape(torch.torch.eye(d, dtype=dtype, device=device).reshape((-1, d * d)), (1, d * d))  # [1, d * d]
-        eyes = eye.repeat(x.shape[0], 1)  # [n, d * d]
 
-        return torch.all(torch.isclose(x_, eyes), dim=1)
+class SU2Character(LieGroupCharacter):
+    def __init__(self, *, representation: LBEigenspaceWithSum):
+        super().__init__(representation=representation)
+        self.coeffs = chebyu(self.representation.index[0]).coef
+
+    @staticmethod
+    def torus_embed(x):
+        return torch.linalg.eigvals(x)
+
+    def chi(self, x):
+        trace = torch.einsum('...ii->...', x)
+        return poly_eval_tensor(trace / 2, self.coeffs)
+
+    @staticmethod
+    def close_to_eye(x):
+        d = x.shape[-1]  # x = [n,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes), dim=-1)
