@@ -71,7 +71,24 @@ class CompactLieGroup(AbstractManifold, ABC):
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
-    pass
+    """Homogeneous space of form G/H"""
+    def __init__(self, G:CompactLieGroup, H:CompactLieGroup, average_order):
+        self.G = G
+        self.H = H
+        self.dim = self.G.dim - self.H.dim
+        self.order = self.G.order
+        self.average_order = average_order
+        self.h_samples = self.sample_H(self.average_order)
+
+    def embed_H_to_G(self, h):
+        pass
+
+    def to_G(self, x):
+        pass
+
+    def sample_H(self, n):
+        raw_samples = self.H.rand(n)
+        return self.embed_H_to_G(raw_samples)
 
 
 class LBEigenfunction(ABC):
@@ -157,6 +174,19 @@ class LieGroupCharacter(torch.nn.Module, ABC):
 
         chi = torch.where(close_to_eye, self.representation.dimension**2 * torch.ones_like(chi), chi)
         return chi
+
+
+class AveragedLieGroupCharacter(torch.nn.Module, ABC):
+    def __init__(self, space: HomogeneousSpace, chi: LieGroupCharacter):
+        self.space = space
+        self.chi = chi
+
+    def forward(self, x):
+        x_ = self.space.to_G(x)
+        x_h = self.space.G.pairwise_diff(x_, self.space.h_samples)
+        chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.avarage_order)
+        result = torch.mean(chi_x_h, dim=-1)
+        return result
 
 
 class TranslatedCharactersBasis(torch.nn.Module):

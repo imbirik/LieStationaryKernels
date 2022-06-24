@@ -61,7 +61,7 @@ def heat_kernel(x1, x2, t=1.0):
 class TestSPD(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 2, 10000
+        self.n, self.order = 3, 100000
         self.space = SymmetricPositiveDefiniteMatrices(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 2.0, 5.0
@@ -82,7 +82,6 @@ class TestSPD(unittest.TestCase):
         self.assertTrue(torch.allclose(cov_sampler, cov_kernel, atol=5e-2))
 
     def test_spherical_function(self):
-        self.y = self.x
         print(self.kernel.normalizer)
         shift = self.space.rand_phase(self.order)
         lmd = torch.randn(1, self.n, device=device, dtype=dtype).repeat(self.order, 1)
@@ -90,13 +89,13 @@ class TestSPD(unittest.TestCase):
 
         x_, y_ = self.space.to_group(self.x), self.space.to_group(self.y)
         x_embed, y_embed = exp(x_), exp(y_)
-        cov1 = (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer
+        cov1 = (x_embed @ (torch.conj(y_embed).T)).real/self.order
 
         x_yinv = self.space.pairwise_diff(x_, y_)
         x_yinv_embed = exp(x_yinv)  # (n*m,order)
         eye_embed = exp(self.space.id)  # (1, order)
         cov_flatten = x_yinv_embed @ (torch.conj(eye_embed).T)
-        cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.kernel.normalizer
+        cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.order
 
         print(cov1)
         print(cov2)

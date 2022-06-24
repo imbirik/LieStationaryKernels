@@ -71,9 +71,10 @@ class TestCompactLieGroups(unittest.TestCase):
         x_yinv = self.space.pairwise_diff(x, y)
         for eigenspace in self.space.lb_eigenspaces:
             f = eigenspace.basis_sum
-            cov1 = f(x_yinv).view(2, 2)
+            dim_sq_f = f.representation.dimension ** 2
+            cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
-            cov2 = (embed_x @ torch.conj(embed_y.T))
+            cov2 = (embed_x @ torch.conj(embed_y.T))/dim_sq_f
             self.assertTrue(torch.allclose(cov1, cov2, atol=2e-1, rtol=2e-1))
             # print('passed')
 

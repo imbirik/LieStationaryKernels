@@ -3,7 +3,8 @@ import numpy as np
 from scipy.special import loggamma
 
 from  src.utils import cartesian_prod
-from src.space import HomogeneousSpace, LBEigenspaceWithSum, LBEigenspaceWithBasis
+from src.space import AbstractManifold, LBEigenspaceWithSum, LBEigenspaceWithBasis
+from geomstats.geometry.hypersphere import Hypersphere
 import spherical_harmonics.torch
 #from functorch import vmap
 #from torch import vmap
@@ -16,20 +17,22 @@ dtype = torch.double
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class Sphere(HomogeneousSpace):
+class Sphere(AbstractManifold, Hypersphere):
     """
     S^{dim} sphere, in R^{dim+1}
     """
-    def __init__(self, dim: int, order: int):
+    def __init__(self, n: int, order: int):
         """
         :param dim: sphere dimension
         :param order: the order of approximation, the umber of Laplace-Beltrami eigenspaces under consideration.
         """
-        self.dim = dim
+        self.n = n
+        self.dim = n
         self.order = order
-        super().__init__()
+        AbstractManifold.__init__(self)
+        Hypersphere.__init__(self, self.n)
 
-        self.fundamental_system = FundamentalSystemCache(self.dim + 1)
+        self.fundamental_system = FundamentalSystemCache(self.n + 1)
         self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(1, self.order + 1)]
 
     def dist(self, x, y):
@@ -38,7 +41,7 @@ class Sphere(HomogeneousSpace):
     def rand(self, n=1):
         if n == 0:
             return None
-        x = torch.randn(n, self.dim + 1, dtype=dtype, device=device)
+        x = torch.randn(n, self.n + 1, dtype=dtype, device=device)
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
 
@@ -46,8 +49,8 @@ class Sphere(HomogeneousSpace):
         # x -- [n,d+1]
         # y -- [m, d+1]
         x_, y_ = cartesian_prod(x, y)
-        x_flatten = torch.reshape(x_, (-1, self.dim+1))
-        y_flatten = torch.reshape(y_, (-1, self.dim+1))
+        x_flatten = torch.reshape(x_, (-1, self.n+1))
+        y_flatten = torch.reshape(y_, (-1, self.n+1))
         return vmap(torch.dot)(x_flatten, y_flatten)
 
 

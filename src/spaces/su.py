@@ -15,13 +15,14 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class SU(CompactLieGroup):
     """SU(dim), special unitary group of degree dim."""
 
-    def __init__(self, dim: int, order: int):
+    def __init__(self, n: int, order: int):
         """
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
-        self.n = dim
-        self.rank = dim-1
+        self.n = n
+        self.dim = n*n-1
+        self.rank = n-1
         self.order = order
         self.Eigenspace = SULBEigenspace
 

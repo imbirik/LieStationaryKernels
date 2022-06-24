@@ -12,7 +12,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 3, 10**4
+        self.n, self.order = 5, 10**6
         self.space = HyperbolicSpace(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 5.0, 5.0 + self.space.dim
@@ -39,21 +39,19 @@ class TestHyperbolic(unittest.TestCase):
         shift = self.space.rand_phase(self.order)
         lmd = torch.randn(1, device=device, dtype=dtype).repeat(self.order)
         exp = HypShiftExp(lmd, shift, self.space)
-
         x_, y_ = self.space.to_group(self.x), self.space.to_group(self.y)
         x_embed, y_embed = exp(x_), exp(y_)
-        cov1 = (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer
+        cov1 = (x_embed @ (torch.conj(y_embed).T)).real/self.order
 
         x_yinv = self.space.pairwise_diff(x_, y_)
         x_yinv_embed = exp(x_yinv)  # (n*m,order)
         eye_embed = exp(self.space.id)  # (1, order)
         cov_flatten = x_yinv_embed @ (torch.conj(eye_embed).T)
-        cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.kernel.normalizer
-
-        # print(cov1)
-        # print(cov2)
+        cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.order
+        print(cov1)
+        print(cov2)
         # print(torch.max(torch.abs(cov1 - cov2)).item())
-        self.assertTrue(torch.allclose(cov1, cov2, atol=1e-2))
+        self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2))
 
 
 if __name__ == '__main__':

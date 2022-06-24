@@ -8,6 +8,7 @@ import operator
 import math
 import itertools as it
 #from functorch import vmap
+from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
 from torch.autograd.functional import _vmap as vmap
 
 dtype = torch.double
@@ -17,15 +18,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class SO(CompactLieGroup):
     """SO(dim), special orthogonal group of degree dim."""
 
-    def __init__(self, dim: int, order: int):
+    def __init__(self, n: int, order: int):
         """
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
-        if dim <= 2 or dim == 4:
+        if n <= 2 or n == 4:
             raise ValueError("Dimensions 1, 2, 4 are not supported")
-        self.n = dim
-        self.rank = dim // 2
+        self.n = n
+        self.dim = n * (n-1)//2
+        self.rank = n // 2
         self.order = order
         self.Eigenspace = SOLBEigenspace
         if self.n % 2 == 0:
