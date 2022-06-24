@@ -18,14 +18,15 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Parametrized test, produces test classes called Test_Group.dim.order, for example, Test_SO.3.10 or Test_SU.2.5
 @parameterized_class([
-    {'group': SO, 'dim': 3, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
+    # {'group': SO, 'dim': 3, 'order': 10, 'dtype': torch.double},
+    # {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
     # {'group': SO, 'dim': 6, 'order': 10, 'dtype': torch.double},
     # {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
     {'group': SU, 'dim': 2, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 3, 'order': 10, 'dtype': torch.cdouble},
-    # {'group': SU, 'dim': 4, 'order': 10, 'dtype': torch.cdouble},
-    # {'group': SU, 'dim': 5, 'order': 10, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 3, 'order': 5, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 4, 'order': 5, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 5, 'order': 5, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 6, 'order': 5, 'dtype': torch.cdouble},
 ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["group"].__name__}.'
                                                  f'{params_dict["dim"]}.{params_dict["order"]}')
 class TestCompactLieGroups(unittest.TestCase):

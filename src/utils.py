@@ -32,7 +32,7 @@ def vander_det(x):
 
 def vander_det2(x):
     d = x.unsqueeze(-2) - x.unsqueeze(-1)
-    return (torch.ones_like(d).triu() + d.tril(1)).prod(-1).prod(-1)
+    return (torch.ones_like(d).triu() + d.tril(-1)).prod(-1).prod(-1)
 
 
 def poly_eval_tensor(x, coeffs):

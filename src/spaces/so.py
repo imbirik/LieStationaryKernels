@@ -89,7 +89,7 @@ class SOLBEigenspace(LBEigenspaceWithSum):
     def compute_dimension(self):
         signature = self.index
         so = self.manifold
-        if so.dim % 2 == 1:
+        if so.n % 2 == 1:
             qs = [pk + so.rank - k - 1 / 2 for k, pk in enumerate(signature)]
             rep_dim = reduce(operator.mul, (2 * qs[k] / math.factorial(2 * k + 1) for k in range(0, so.rank))) \
                       * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
@@ -108,7 +108,7 @@ class SOLBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        if self.manifold.dim == 3:
+        if self.manifold.n == 3:
             return SO3Character(representation=self)
         else:
             return SOCharacter(representation=self)
@@ -120,7 +120,7 @@ class SOCharacter(LieGroupCharacter):
     def torus_embed(x):
         #TODO :check
         eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=-1).indices[..., 0]
+        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=-2).indices[..., 0]
         eigv = torch.gather(eigv, dim=1, index=sorted_ind)
         gamma = eigv[..., 0:-1:2]
         return gamma
@@ -140,7 +140,7 @@ class SOCharacter(LieGroupCharacter):
         signature = self.representation.index
         # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
         gamma = self.torus_embed(x)
-        if self.representation.manifold.dim % 2:
+        if self.representation.manifold.n % 2:
             qs = [pk + rank - k - 1 / 2 for k, pk in enumerate(signature)]
             return self.xi1(qs, gamma) / \
                    self.xi1([k - 1 / 2 for k in range(rank, 0, -1)], gamma)

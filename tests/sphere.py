@@ -10,6 +10,7 @@ from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 
 dtype = torch.double
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class TestSphere(unittest.TestCase):
@@ -37,21 +38,23 @@ class TestSphere(unittest.TestCase):
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.y)
         cov_prior = self.sampler._cov(self.x, self.y)
+        # print(torch.max(torch.abs(cov_prior-cov_func)).item())
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=1e-2))
 
     def test_sampler(self):
-        true_ans = torch.ones(self.n, dtype=dtype)
+        true_ans = torch.ones(self.n, dtype=dtype, device=device)
         self.assertTrue(torch.allclose(vmap(torch.dot)(self.x, self.x), true_ans))
 
     def test_harmonics(self):
         n = 100000
-        x = torch.randn(n, self.dim + 1, dtype=dtype)
+        x = torch.randn(n, self.dim + 1, dtype=dtype, device=device)
         x = x / torch.norm(x, dim=1, keepdim=True)
         for i in range(self.order):
             num_harmonics = self.space.lb_eigenspaces[i].dimension
-            embed = self.space.lb_eigenspaces[i].basis(x)/np.sqrt(n)
+            embed = self.space.lb_eigenspaces[i].basis(x)
+            embed /= np.sqrt(n)
             cov = torch.einsum('ij,kj->ik', embed, embed)
-            eye = torch.eye(num_harmonics, dtype=dtype)
+            eye = torch.eye(num_harmonics, dtype=dtype, device=device)
             self.assertTrue(torch.allclose(cov, eye, atol=1e-1))
 
 

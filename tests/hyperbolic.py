@@ -12,7 +12,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 5, 1000000
+        self.n, self.order = 3, 10**4
         self.space = HyperbolicSpace(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 5.0, 5.0 + self.space.dim
@@ -25,16 +25,17 @@ class TestHyperbolic(unittest.TestCase):
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
 
     def test_kernel(self):
-        print(self.space._dist_to_id(self.x))
+        # print('dist',self.space._dist_to_id(self.x))
         cov_kernel = self.kernel(self.x, self.x)
         cov_sampler = self.sampler._cov(self.x, self.x)
-        print(cov_sampler)
-        print(cov_kernel)
+        # print(cov_sampler)
+        # print(cov_kernel)
+        # print(torch.max(torch.abs(cov_sampler-cov_kernel)).item())
         self.assertTrue(torch.allclose(cov_sampler, cov_kernel, atol=5e-2))
 
     def test_spherical_function(self):
         self.y = self.x
-        print(self.kernel.normalizer)
+        # print('norm', self.kernel.normalizer)
         shift = self.space.rand_phase(self.order)
         lmd = torch.randn(1, device=device, dtype=dtype).repeat(self.order)
         exp = HypShiftExp(lmd, shift, self.space)
@@ -49,6 +50,11 @@ class TestHyperbolic(unittest.TestCase):
         cov_flatten = x_yinv_embed @ (torch.conj(eye_embed).T)
         cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.kernel.normalizer
 
-        print(cov1)
-        print(cov2)
+        # print(cov1)
+        # print(cov2)
+        # print(torch.max(torch.abs(cov1 - cov2)).item())
         self.assertTrue(torch.allclose(cov1, cov2, atol=1e-2))
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

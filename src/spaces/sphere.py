@@ -13,6 +13,7 @@ from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics
 
 dtype = torch.double
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class Sphere(HomogeneousSpace):
@@ -37,7 +38,7 @@ class Sphere(HomogeneousSpace):
     def rand(self, n=1):
         if n == 0:
             return None
-        x = torch.randn(n, self.dim + 1, dtype=dtype)
+        x = torch.randn(n, self.dim + 1, dtype=dtype, device=device)
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
 
@@ -50,7 +51,7 @@ class Sphere(HomogeneousSpace):
         return vmap(torch.dot)(x_flatten, y_flatten)
 
 
-class SphereLBEigenspace(LBEigenspaceWithSum, LBEigenspaceWithBasis):
+class SphereLBEigenspace(LBEigenspaceWithBasis):
     """The Laplace-Beltrami eigenspace for the sphere."""
     def __init__(self, index, *, manifold: Sphere):
         """
@@ -82,7 +83,7 @@ class NormalizedSphericalFunctions(torch.nn.Module):
                      np.exp((np.log(np.pi) * (dimension + 1) / 2 - loggamma((dimension + 1) / 2)) / 2)
 
     def forward(self, x):
-        return self.spherical_functions(x)
+        return self.spherical_functions(x.cpu()).to(device)
 
 
 class ZonalSphericalFunction(torch.nn.Module):
@@ -107,10 +108,10 @@ class GegenbauerPolynomials(torch.nn.Module):
         self.alpha = alpha
         self.n = n
         self.coefficients = self.compute_coefficients()
-        self.powers = torch.arange(0., self.n + 1., dtype=dtype)
+        self.powers = torch.arange(0., self.n + 1., dtype=dtype, device=device)
 
     def compute_coefficients(self):
-        coefficients = torch.zeros(self.n + 1, dtype=dtype)
+        coefficients = torch.zeros(self.n + 1, dtype=dtype, device=device)
         # Two first polynomials is quite pretty
         # C_0 = 1, C_1 = 2\alpha*x
         if self.n == 0:

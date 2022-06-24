@@ -80,7 +80,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         su = self.manifold
         rep_dim = reduce(operator.mul, (reduce(operator.mul, (signature[i - 1] - signature[j - 1] + j - i for j in
                                                               range(i + 1, su.n + 1))) / math.factorial(su.n - i)
-                                        for i in range(1, su.dim)))
+                                        for i in range(1, su.n)))
         return int(round(rep_dim))
 
     def compute_lb_eigenvalue(self):

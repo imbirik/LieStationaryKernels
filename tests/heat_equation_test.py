@@ -127,3 +127,7 @@ def tangent_onb(manifold, x):
     assert np.all(np.isclose(projected_onb_eigvals, 1.0))
 
     return projected_onb_eigvecs
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
