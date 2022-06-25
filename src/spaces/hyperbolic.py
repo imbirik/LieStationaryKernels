@@ -39,7 +39,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         else:
             return NotImplementedError
         lmd = torch.squeeze(lmd)
-        self.lb_eigenspaces = SPDShiftedNormailizedExp(lmd, shift, self)
+        self.lb_eigenspaces = HypShiftedNormailizedExp(lmd, shift, self)
 
     def to_group(self, x):
         return x
@@ -107,7 +107,7 @@ class HypShiftExp(torch.nn.Module):
         return torch.exp(inner_prod)
 
 
-class SPDShiftedNormailizedExp(torch.nn.Module):
+class HypShiftedNormailizedExp(torch.nn.Module):
     def __init__(self, lmd, shift, manifold):
         super().__init__()
         self.n = manifold.n

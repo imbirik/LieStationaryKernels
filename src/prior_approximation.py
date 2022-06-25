@@ -120,7 +120,7 @@ class RandomFourierApproximation(torch.nn.Module):
         embedding = self.kernel.manifold.lb_eigenspaces(x_)
         sample_real = torch.einsum('nm,m->n', embedding.real, self.weights_real)
         sample_imag = torch.einsum('nm,m->n', embedding.imag, self.weights_imag)
-        sample = torch.cat((sample_real, sample_imag), 1)/sqrt(self.kernel.normalizer)
+        sample = (sample_real+sample_imag)/sqrt(self.kernel.normalizer)
         return sample
 
     def _cov(self, x, y):

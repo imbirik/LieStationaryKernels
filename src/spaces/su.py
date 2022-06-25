@@ -1,5 +1,6 @@
 import torch
-from functorch import vmap
+#from functorch import vmap
+from torch.autograd.functional import _vmap as vmap
 import numpy as np
 from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
 from functools import reduce

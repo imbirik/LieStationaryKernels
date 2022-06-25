@@ -71,24 +71,40 @@ class CompactLieGroup(AbstractManifold, ABC):
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
-    """Homogeneous space of form G/H"""
+    """Homogeneous space of form M=G/H"""
     def __init__(self, G:CompactLieGroup, H:CompactLieGroup, average_order):
-        self.G = G
-        self.H = H
+        super().__init__()
+        self.G, self.H = G, H
         self.dim = self.G.dim - self.H.dim
-        self.order = self.G.order
-        self.average_order = average_order
+        self.order, self.average_order = self.G.order, average_order
+
         self.h_samples = self.sample_H(self.average_order)
 
-    def embed_H_to_G(self, h):
+        self.lb_eigenspaces = [AveragedLBEigenspace(representation, self) for
+                               representation in self.G.lb_eigenspaces]
+
+    def H_to_G(self, h):
         pass
 
-    def to_G(self, x):
+    def M_to_G(self, x):
+        pass
+
+    def G_to_M(self, g):
         pass
 
     def sample_H(self, n):
         raw_samples = self.H.rand(n)
-        return self.embed_H_to_G(raw_samples)
+        return self.H_to_G(raw_samples)
+
+    def rand(self, n=1):
+        raw_samples = self.G.rand(n)
+        return self.G_to_M(raw_samples)
+
+    def pairwise_diff(self, x, y):
+        x_, y_ = self.M_to_G(x), self.M_to_G(y)
+        diff_ = self.G.pairwise_diff(x_, y_)
+        diff = self.G_to_M(diff_)
+        return diff
 
 
 class LBEigenfunction(ABC):
@@ -157,6 +173,26 @@ class LBEigenspaceWithBasis(LBEigenspaceWithSum, ABC):
         raise NotImplementedError
 
 
+class AveragedLBEigenspace(LBEigenspaceWithSum):
+    """The Laplace-Beltrami eigenspace for the special orthogonal group."""
+    def __init__(self, representaion: LBEigenspaceWithSum, manifold: HomogeneousSpace):
+        """
+        :param signature: the signature of a representation
+        :param manifold: the "parent" manifold, an instance of SO
+        """
+        self.initial_representation = representaion
+        super().__init__(representaion.index, manifold=manifold)
+
+    def compute_dimension(self):
+        return self.initial_representation.compute_dimension()
+
+    def compute_lb_eigenvalue(self):
+        return self.initial_representation.compute_lb_eigenvalue()
+
+    def compute_basis_sum(self):
+        return AveragedLieGroupCharacter(self, self.manifold, self.initial_representation.compute_basis_sum())
+
+
 class LieGroupCharacter(torch.nn.Module, ABC):
     """Lie group representation character abstract base class"""
     def __init__(self, *, representation: LBEigenspace):
@@ -177,14 +213,17 @@ class LieGroupCharacter(torch.nn.Module, ABC):
 
 
 class AveragedLieGroupCharacter(torch.nn.Module, ABC):
-    def __init__(self, space: HomogeneousSpace, chi: LieGroupCharacter):
+    def __init__(self, repreesntation, space: HomogeneousSpace, chi: LieGroupCharacter):
+        super().__init__()
+        self.representation = repreesntation
         self.space = space
         self.chi = chi
 
+
     def forward(self, x):
-        x_ = self.space.to_G(x)
+        x_ = self.space.M_to_G(x)
         x_h = self.space.G.pairwise_diff(x_, self.space.h_samples)
-        chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.avarage_order)
+        chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.average_order)
         result = torch.mean(chi_x_h, dim=-1)
         return result
 
