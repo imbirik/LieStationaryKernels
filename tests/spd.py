@@ -4,12 +4,12 @@ import numpy as np
 import scipy
 from scipy import integrate
 from src.spaces.spd import SymmetricPositiveDefiniteMatrices, SPDShiftExp
-from src.spectral_kernel import RandomFourierFeaturesKernel
+from src.spectral_kernel import RandomSpectralKernel
 from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-dtype = torch.double
+#os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 np.set_printoptions(precision=3)
 #device = 'cpu'
@@ -61,14 +61,14 @@ def heat_kernel(x1, x2, t=1.0):
 class TestSPD(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 3, 100000
+        self.n, self.order = 3, 100
         self.space = SymmetricPositiveDefiniteMatrices(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 2.0, 5.0
         self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
-        self.kernel = RandomFourierFeaturesKernel(self.measure, self.space)
+        self.kernel = RandomSpectralKernel(self.measure, self.space)
         self.sampler = RandomFourierApproximation(self.kernel)
         self.x_size, self.y_size = 5, 5
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)

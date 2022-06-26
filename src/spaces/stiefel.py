@@ -6,7 +6,7 @@ from geomstats.geometry.stiefel import Stiefel as Stiefel_
 #from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 from src.space import LBEigenspaceWithSum, LieGroupCharacter, AveragedLieGroupCharacter
-dtype = torch.double
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

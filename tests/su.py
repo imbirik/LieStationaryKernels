@@ -10,7 +10,7 @@ from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
 
-dtype = torch.cdouble
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

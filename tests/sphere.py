@@ -9,7 +9,7 @@ from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 
-dtype = torch.double
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

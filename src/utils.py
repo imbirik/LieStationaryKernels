@@ -5,7 +5,7 @@ from torch.distributions.distribution import Distribution
 # from torch.distributions import constraints
 # from pyro.distributions.rejector import Rejector
 from math import sqrt
-dtype = torch.double
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 

@@ -9,7 +9,7 @@ import math
 import itertools
 from src.utils import vander_det, vander_det2, poly_eval_tensor
 from scipy.special import chebyu
-dtype = torch.cdouble
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

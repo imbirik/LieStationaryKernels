@@ -7,7 +7,7 @@ from math import sqrt
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 
-dtype = torch.double
+dtype = torch.float32
 j = torch.tensor([1j], device=device).item()  # imaginary unit
 pi = 2*torch.acos(torch.zeros(1)).item()
 
@@ -33,8 +33,8 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
             student_samples = torch.distributions.StudentT(df=measure.nu-1, scale=scale).rsample((self.order,))
             lmd = torch.abs(student_samples)
         elif isinstance(measure, SqExpSpectralMeasure):
-            scale = measure.lengthscale[0]
-            normal_samples = torch.randn((self.order,), device=device, dtype=dtype)/scale
+            scale = 1.0/measure.lengthscale[0]
+            normal_samples = torch.distributions.Normal(0, torch.abs(scale)).rsample((self.order,))
             lmd = torch.abs(normal_samples)
         else:
             return NotImplementedError
@@ -55,7 +55,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         x_l2, y_l2 = torch.sum((torch.square(x_flatten)), dim=1), torch.sum((torch.square(y_flatten)), dim=1)
         xy_dist = torch.arccosh(1 + 2 * xy_l2/(1-x_l2)/(1-y_l2))
         ones = torch.ones((xy_dist.size()[0], self.n), device=device, dtype=dtype)/sqrt(self.n)
-        xy_diff = ones * torch.tanh(xy_dist/2)[:, None]
+        xy_diff = ones * torch.tanh(xy_dist/2)[:, None].clone()
         return xy_diff
 
     def rand_phase(self, n=1):
@@ -70,8 +70,8 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from Hyperbolic space since Haar measure is infinite.
            We will sample from unit ball uniformly. """
         sphere = self.rand_phase(n)
-        r = torch.rand(n, device=device, dtype=dtype)
-        return sphere * r[:, None]
+        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n) #torch.pow((torch.rand(n, device=device, dtype=dtype)), self.n)
+        return sphere * r[:, None].clone()
 
     def inv(self, x):
         # TODO: CHECK
@@ -102,7 +102,7 @@ class HypShiftExp(torch.nn.Module):
         x_shift_norm = torch.sum(torch.square(x_flatten - shift_flatten), dim=1)  # [n*m]
         denominator = torch.log(x_shift_norm).reshape(x.size()[0], -1)  # log(|x_i-b_j|^2) --- [n,m]
         numerator = torch.log(1-torch.sum(torch.square(x), dim=1))  # [n]
-        log_xb = numerator[:, None] - denominator  # [n,m]
+        log_xb = numerator[:, None].clone() - denominator  # [n,m]
         inner_prod = torch.einsum('nm,m-> nm', log_xb, -j * self.lmd + self.rho)  #[n,m]
         return torch.exp(inner_prod)
 
@@ -122,7 +122,7 @@ class HypShiftedNormailizedExp(torch.nn.Module):
 
     def c_function(self, lmd):
         lmd_sq = torch.square(lmd)  # (m, )
-        log_c = torch.log(lmd_sq[:, None] + self.adds[None, :])
+        log_c = torch.log(lmd_sq[:, None].clone() + self.adds[None, :].clone())
         log_c = torch.sum(log_c, dim=1)
         if self.n % 2 == 0:
             log_c = log_c + torch.log(lmd) + torch.log(torch.tanh(pi * lmd))

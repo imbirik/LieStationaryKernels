@@ -8,8 +8,8 @@ from math import factorial
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 
-dtype = torch.double
-j = torch.tensor([1j], device=device).item()  # imaginary unit
+dtype = torch.float32
+j = torch.tensor([1j], device=device, dtype=torch.complex64).item()  # imaginary unit
 pi = 2*torch.acos(torch.zeros(1)).item()
 
 

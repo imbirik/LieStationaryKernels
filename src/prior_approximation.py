@@ -5,10 +5,10 @@ from itertools import islice
 
 from src.utils import cartesian_prod
 from math import sqrt
-from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomFourierFeaturesKernel
+from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomSpectralKernel
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dtype = torch.double
+dtype = torch.float32
 
 
 class KarhunenLoeveExpansion(torch.nn.Module):
@@ -100,7 +100,7 @@ class RandomPhaseApproximation(torch.nn.Module):
 
 
 class RandomFourierApproximation(torch.nn.Module):
-    def __init__(self, kernel: RandomFourierFeaturesKernel):
+    def __init__(self, kernel: RandomSpectralKernel):
         super().__init__()
 
         self.kernel = kernel
@@ -117,13 +117,14 @@ class RandomFourierApproximation(torch.nn.Module):
 
     def forward(self, x):  # [N, ...]
         x_ = self.kernel.manifold.to_group(x)
-        embedding = self.kernel.manifold.lb_eigenspaces(x_)
+        embedding = self.kernel.manifold.lb_eigenspaces(x_) * torch.sqrt(self.kernel.measure.variance[0])
         sample_real = torch.einsum('nm,m->n', embedding.real, self.weights_real)
         sample_imag = torch.einsum('nm,m->n', embedding.imag, self.weights_imag)
-        sample = (sample_real+sample_imag)/sqrt(self.kernel.normalizer)
+        sample = (sample_real-sample_imag)/sqrt(self.kernel.normalizer)
         return sample
 
     def _cov(self, x, y):
         x_, y_ = self.kernel.manifold.to_group(x), self.kernel.manifold.to_group(y)
         x_embed, y_embed = self.kernel.manifold.lb_eigenspaces(x_), self.kernel.manifold.lb_eigenspaces(y_)
-        return (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer
+        print("max of x_embed:", torch.max(torch.abs(x_embed)))
+        return self.kernel.measure.variance[0] * (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer

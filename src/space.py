@@ -8,7 +8,7 @@ j = torch.tensor([1j]).item()  # imaginary unit
 pi = 2*torch.acos(torch.zeros(1)).item()
 
 
-class AbstractManifold(torch.nn.Module, ABC):
+class AbstractManifold(ABC):
     """Abstract base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space"""
     def __init__(self):
 
@@ -313,7 +313,7 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         n = x.shape[0]
         x_shift_flatten = self.manifold.pairwise_diff(x, self.shift) # (n * m, ...)
         _, a_flatten, _ = self.iwasawa_decomposition(x_shift_flatten)  # shape (n * m, rank)
-        log_a_flatten = torch.log(a_flatten).type(torch.cdouble)
+        log_a_flatten = torch.log(a_flatten).type(torch.complex64)
         a = log_a_flatten.view(n, self.order, -1)
 
         lin_func = j*self.lmd + self.rho[None, :] # (m, rank)

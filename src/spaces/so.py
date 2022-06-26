@@ -11,7 +11,7 @@ import itertools as it
 from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
 from torch.autograd.functional import _vmap as vmap
 
-dtype = torch.double
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

@@ -1,11 +1,11 @@
 import unittest
 import torch
 from src.spaces.hyperbolic import HyperbolicSpace, HypShiftExp
-from src.spectral_kernel import RandomFourierFeaturesKernel
+from src.spectral_kernel import RandomSpectralKernel
 from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 
-dtype = torch.double
+dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 
@@ -19,15 +19,15 @@ class TestHyperbolic(unittest.TestCase):
         self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
-        self.kernel = RandomFourierFeaturesKernel(self.measure, self.space)
+        self.kernel = RandomSpectralKernel(self.measure, self.space)
         self.sampler = RandomFourierApproximation(self.kernel)
-        self.x_size, self.y_size = 5, 5
+        self.x_size, self.y_size = 3, 3
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
 
     def test_kernel(self):
-        # print('dist',self.space._dist_to_id(self.x))
-        cov_kernel = self.kernel(self.x, self.x)
-        cov_sampler = self.sampler._cov(self.x, self.x)
+        print('dist', self.space._dist_to_id(self.x))
+        cov_kernel = self.kernel(self.x, self.y)
+        cov_sampler = self.sampler._cov(self.x, self.y)
         # print(cov_sampler)
         # print(cov_kernel)
         # print(torch.max(torch.abs(cov_sampler-cov_kernel)).item())
