@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from src.spaces.so import SO, SOLBEigenspace
+from src.spaces.so import SO, SOLBEigenspace, _SO
 from src.space import HomogeneousSpace
 from geomstats.geometry.stiefel import Stiefel as Stiefel_
 #from functorch import vmap
@@ -18,7 +18,7 @@ class Stiefel(HomogeneousSpace, Stiefel_):
         self.n, self.m = n, m
         self.n_m = n - m
         G = SO(n, order=order)
-        H = SO(self.n_m, order=1)
+        H = _SO(self.n_m)
         HomogeneousSpace.__init__(self, G=G, H=H, average_order=average_order)
         Stiefel_.__init__(self, n, m)
 
@@ -37,9 +37,10 @@ class Stiefel(HomogeneousSpace, Stiefel_):
 
     def M_to_G(self, x):
         g, _ = torch.linalg.qr(x, mode='complete')
-        x_sign = torch.sign(x[:, :, 0])
-        g_sign = torch.sign(g[:, :, 0])
-        g = g * (x_sign * g_sign)[..., None]
+        diff = 2*(torch.all(torch.isclose(g[:, :, :self.m], x), dim=-2).type(dtype)-0.5)
+        g = g * diff[..., None]
+        det_sign_g = torch.sign(torch.det(g))
+        g[:, :, -1] *= det_sign_g[:, None]
         return g
 
     def G_to_M(self, g):

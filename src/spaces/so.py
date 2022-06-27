@@ -15,6 +15,22 @@ dtype = torch.float32
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
+class _SO:
+    """Helper class for sampling"""
+    def __init__(self, n):
+        self.n = n
+        self.dim = n*(n-1)//2
+
+    def rand(self, n=1):
+        h = torch.randn((n, self.n, self.n), device=device, dtype=dtype)
+        q, r = torch.linalg.qr(h)
+        r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
+        q *= r_diag_sign[:, None]
+        q_det_sign = torch.sign(torch.det(q))
+        q[:, :, 0] *= q_det_sign[:, None]
+        return q
+
+
 class SO(CompactLieGroup):
     """SO(dim), special orthogonal group of degree dim."""
 

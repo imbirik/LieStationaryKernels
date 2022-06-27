@@ -16,7 +16,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestStiefel(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.m= 7, 4
+        self.n, self.m= 3, 1
         self.order, self.average_order = 10, 100
         self.space = Stiefel(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
@@ -25,8 +25,7 @@ class TestStiefel(unittest.TestCase):
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
-        self.space_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
-        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**4)
+        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**3)
 
         self.x_size, self.y_size = 10, 10
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)

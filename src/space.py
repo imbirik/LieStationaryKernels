@@ -12,7 +12,7 @@ class AbstractManifold(ABC):
     """Abstract base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space"""
     def __init__(self):
 
-        super().__init__()
+        ABC.__init__(self)
 
         # self.dim = None
         # self.order = None
@@ -72,8 +72,8 @@ class CompactLieGroup(AbstractManifold, ABC):
 
 class HomogeneousSpace(AbstractManifold, ABC):
     """Homogeneous space of form M=G/H"""
-    def __init__(self, G:CompactLieGroup, H:CompactLieGroup, average_order):
-        super().__init__()
+    def __init__(self, G:CompactLieGroup, H, average_order):
+        AbstractManifold.__init__(self)
         self.G, self.H = G, H
         self.dim = self.G.dim - self.H.dim
         self.order, self.average_order = self.G.order, average_order
@@ -106,6 +106,9 @@ class HomogeneousSpace(AbstractManifold, ABC):
         diff = self.G_to_M(diff_)
         return diff
 
+    @abstractmethod
+    def dist(self, x, y):
+        raise NotImplementedError
 
 class LBEigenfunction(ABC):
     """Laplace-Beltrami eigenfunction abstract base class"""
