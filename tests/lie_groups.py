@@ -1,3 +1,7 @@
+import sys
+
+import itertools
+
 import unittest
 from parameterized import parameterized_class
 import torch
@@ -10,47 +14,97 @@ from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
 
+from src.space import TranslatedCharactersBasis
+
 from src.spaces.so import SO
 from src.spaces.su import SU
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+torch.set_printoptions(precision=2, sci_mode=False, linewidth=160, edgeitems=15)
 
 # Parametrized test, produces test classes called Test_Group.dim.order, for example, Test_SO.3.10 or Test_SU.2.5
 @parameterized_class([
-    # {'group': SO, 'dim': 3, 'order': 10, 'dtype': torch.double},
-    # {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
-    # {'group': SO, 'dim': 6, 'order': 10, 'dtype': torch.double},
-    # {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 3, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 4, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 6, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
+    {'group': SO, 'dim': 8, 'order': 10, 'dtype': torch.double},
     {'group': SU, 'dim': 2, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 3, 'order': 5, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 4, 'order': 5, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 5, 'order': 5, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 6, 'order': 5, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 3, 'order': 10, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 4, 'order': 10, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 5, 'order': 10, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 6, 'order': 10, 'dtype': torch.cdouble},
 ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["group"].__name__}.'
                                                  f'{params_dict["dim"]}.{params_dict["order"]}')
 class TestCompactLieGroups(unittest.TestCase):
 
     def setUp(self) -> None:
-        # self.dim, self.order = 3, 10
-        self.space = self.group(dim=self.dim, order=self.order)
+        self.group = self.group(n=self.dim, order=self.order)
 
         self.lengthscale, self.nu = 2.0, 5.0
         self.measure = SqExpSpectralMeasure(self.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.dim, self.lengthscale, self.nu)
 
-        self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
-        self.space_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
+        self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.group)
+        self.space_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.group)
         self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**4)
 
         self.n, self.m = 20, 20
-        self.x, self.y = self.space.rand(self.n), self.space.rand(self.m)
+        self.x, self.y = self.group.rand(self.n), self.group.rand(self.m)
 
-    def test_sampler(self):
+    def _test_character_conjugation_invariance(self):
+        num_samples_x = 20
+        num_samples_g = 20
+        xs = self.group.rand(num_samples_x).unsqueeze(0)
+        gs = self.group.rand(num_samples_g).unsqueeze(1)
+        conjugates = torch.matmul(torch.matmul(gs,xs), self.group.inv(gs))
+        for irrep in self.group.lb_eigenspaces:
+            chi = irrep.basis_sum
+            chi_vals_xs = chi(xs)
+            chi_vals_conj = chi(conjugates)
+            self.assertTrue(torch.allclose(chi_vals_xs, chi_vals_conj))
+
+    def _test_characters_orthogonality(self):
+        num_samples_x = 10**5
+        xs = self.group.rand(num_samples_x)
+        num_irreps = len(self.group.lb_eigenspaces)
+        scalar_products = torch.zeros((num_irreps, num_irreps), dtype=torch.cdouble)
+        for a, b in itertools.product(enumerate(self.group.lb_eigenspaces), repeat=2):
+            i, irrep1 = a
+            j, irrep2 = b
+            chi1, chi2 = irrep1.basis_sum.chi, irrep2.basis_sum.chi
+            scalar_products[i, j] = torch.mean(torch.conj(chi1(xs)) * chi2(xs))
+        print(torch.max(torch.abs(scalar_products - torch.eye(num_irreps, dtype=torch.cdouble))).item())
+        self.assertTrue(torch.allclose(scalar_products, torch.eye(num_irreps, dtype=torch.cdouble), atol=5e-2))
+
+    def test_translated_characters_basis_orthogonality(self):
+        sys.stdout.write('\n')
+        for irrep in self.group.lb_eigenspaces:
+            torch.cuda.empty_cache()
+            dim = irrep.dimension
+            if self.dtype in (torch.double, torch.float32) and dim <= 20 or self.dtype == torch.cdouble and dim <= 10:
+                basis = TranslatedCharactersBasis(representation=irrep)
+                num_samples = 10 ** 4
+                num_batches = 10 ** 2
+                sc_prod = torch.zeros((dim ** 2, dim ** 2), dtype=torch.cdouble, device=device)
+                for batch in range(num_batches):
+                    xs = self.group.rand(num_samples)
+                    xsb = basis.forward(xs)
+                    sc_prod += torch.einsum('bi,bj->ij', xsb, xsb.conj()) / num_samples
+                    sys.stdout.write('{} {} {}        \r'.format(irrep.index, irrep.dimension, batch))
+                    sys.stdout.flush()
+                sc_prod /= num_batches
+                eyes = torch.eye(dim ** 2, dtype=torch.cdouble, device=device)
+                print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
+                self.assertTrue(torch.allclose(sc_prod, eyes, atol=5e-2))
+
+    def _test_sampler(self):
         true_ans = torch.eye(self.dim, dtype=self.dtype, device=device).reshape((1, self.dim, self.dim)).repeat(self.n, 1, 1)
-        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(vmap(self.group.difference)(self.x, self.x), true_ans))
 
-    def test_prior(self) -> None:
+    def _test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.y)
         cov_prior = self.sampler._cov(self.x, self.y)
         # print(torch.std(cov_func-cov_prior)/torch.std(cov_func))
@@ -59,17 +113,17 @@ class TestCompactLieGroups(unittest.TestCase):
 
     def embed(self, f, x):
         phase, weight = self.sampler.phases[0], self.sampler.weights[0]  # [num_phase, ...], [num_phase]
-        x_phase_inv = self.space.pairwise_diff(x, phase)
+        x_phase_inv = self.group.pairwise_diff(x, phase)
         eigen_embedding = f(x_phase_inv).view(x.size()[0], phase.size()[0])
         eigen_embedding = eigen_embedding / np.sqrt(
             self.sampler.phase_order)
         return eigen_embedding
 
     def _test_eigenfunction(self) -> None:
-        x, y = self.space.rand(2), self.space.rand(2)
+        x, y = self.group.rand(2), self.group.rand(2)
         y = x
-        x_yinv = self.space.pairwise_diff(x, y)
-        for eigenspace in self.space.lb_eigenspaces:
+        x_yinv = self.group.pairwise_diff(x, y)
+        for eigenspace in self.group.lb_eigenspaces:
             f = eigenspace.basis_sum
             dim_sq_f = f.representation.dimension ** 2
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f

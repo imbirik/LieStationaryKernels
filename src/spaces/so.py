@@ -39,8 +39,8 @@ class SO(CompactLieGroup):
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
-        if n <= 2 or n == 4:
-            raise ValueError("Dimensions 1, 2, 4 are not supported")
+        if n <= 2:
+            raise ValueError("Dimensions 1, 2 are not supported")
         self.n = n
         self.dim = n * (n-1)//2
         self.rank = n // 2
@@ -134,14 +134,24 @@ class SOLBEigenspace(LBEigenspaceWithSum):
 
 class SOCharacter(LieGroupCharacter):
     """Representation character for special orthogonal group"""
-    @staticmethod
-    def torus_embed(x):
-        #TODO :check
-        eigv = torch.linalg.eigvals(x)
-        sorted_ind = torch.sort(torch.view_as_real(eigv), dim=-2).indices[..., 0]
-        eigv = torch.gather(eigv, dim=1, index=sorted_ind)
-        gamma = eigv[..., 0:-1:2]
-        return gamma
+    # @staticmethod
+    def torus_embed(self, x):
+        if self.representation.manifold.n % 2 == 1:
+            eigvals = torch.linalg.eigvals(x)
+            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
+            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
+            gamma = eigvals[..., 0:-1:2]
+            return gamma
+        else:
+            eigvals, eigvecs = torch.linalg.eig(x)
+            # c is a matrix transforming x into its canonical form (with 2x2 blocks)
+            c = torch.zeros_like(eigvecs)
+            c[..., ::2] = eigvecs[..., ::2].real
+            c[..., 1::2] = eigvecs[..., ::2].imag
+            c *= math.sqrt(2)
+            eigvals[..., 0] **= torch.det(c)
+            gamma = eigvals[..., ::2]
+            return gamma
 
     @staticmethod
     def xi0(qs, gamma):
@@ -171,7 +181,7 @@ class SOCharacter(LieGroupCharacter):
             else:
                 sign = math.copysign(1, signature[-1])
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
-                       self.xi0(list(reversed(range(rank))), gamma)
+                       (1 * self.xi0(list(reversed(range(rank))), gamma))
 
     @staticmethod
     def close_to_eye(x):
