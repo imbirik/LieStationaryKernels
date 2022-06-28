@@ -3,10 +3,12 @@ import numpy as np
 from src.spaces.so import SO, SOLBEigenspace, _SO
 from src.space import HomogeneousSpace
 from geomstats.geometry.stiefel import Stiefel as Stiefel_
+from src.utils import hook_content_formula
+import warnings
 #from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 from src.space import LBEigenspaceWithSum, LieGroupCharacter, AveragedLieGroupCharacter
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -21,6 +23,7 @@ class Stiefel(HomogeneousSpace, Stiefel_):
         H = _SO(self.n_m)
         HomogeneousSpace.__init__(self, G=G, H=H, average_order=average_order)
         Stiefel_.__init__(self, n, m)
+        self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
 
     def H_to_G(self, h):
         """Embed ortogonal matrix Q in the following way
@@ -36,11 +39,15 @@ class Stiefel(HomogeneousSpace, Stiefel_):
         return res
 
     def M_to_G(self, x):
-        g, _ = torch.linalg.qr(x, mode='complete')
-        diff = 2*(torch.all(torch.isclose(g[:, :, :self.m], x), dim=-2).type(dtype)-0.5)
+        g, r = torch.linalg.qr(x, mode='complete')
+        r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
+        r_diag = torch.cat((r_diag, torch.ones((x.shape[0], self.n_m), dtype=dtype, device=device)), dim=1)
+        g = g * r_diag[:, None]
+        diff = 2*(torch.all(torch.isclose(g[:, :, :self.m], x), dim=-1).type(dtype)-0.5)
         g = g * diff[..., None]
         det_sign_g = torch.sign(torch.det(g))
         g[:, :, -1] *= det_sign_g[:, None]
+        assert torch.allclose(x, g[:, :, :x.shape[-1]])
         return g
 
     def G_to_M(self, g):
@@ -51,3 +58,15 @@ class Stiefel(HomogeneousSpace, Stiefel_):
     def dist(self, x, y):
         raise NotImplementedError
 
+    def close_to_id(self, x):
+        x_ = x[:, :, :self.m].reshape(x.shape[:-2] + (-1,))
+        id_ = self.id.reshape((-1,))
+        return torch.all(torch.isclose(x_, id_[None, ...]), dim=-1)
+
+    def compute_inv_dimension(self, signature):
+        m_ = min(self.m, self.n_m)
+        if m_ < self.G.rank and signature[m_] > 0:
+                return 0
+        signature_abs = tuple(abs(x) for x in signature)
+        inv_dimension = hook_content_formula(signature_abs, m_)
+        return inv_dimension

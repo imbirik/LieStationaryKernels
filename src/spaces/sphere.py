@@ -13,7 +13,7 @@ from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache
 from spherical_harmonics.spherical_harmonics import num_harmonics
 
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 

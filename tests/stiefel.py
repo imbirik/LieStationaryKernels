@@ -9,36 +9,36 @@ from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
 
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class TestStiefel(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.m= 3, 1
-        self.order, self.average_order = 10, 100
+        self.n, self.m = 5, 2
+        self.order, self.average_order = 10, 10**2
         self.space = Stiefel(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
-        self.lengthscale, self.nu = 1.1, 5.0
+        self.lengthscale, self.nu = 1.5, 5.0
         self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
         self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**3)
 
-        self.x_size, self.y_size = 10, 10
+        self.x_size, self.y_size = 5, 5
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
 
     def test_sampler(self):
-        true_ans = torch.eye(self.n, dtype=dtype, device=device).reshape((1, self.n, self.n)).repeat(self.x_size, 1, 1)
-        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans))
+        x_norm = torch.norm(self.x, dim=1)
+        self.assertTrue(torch.allclose(x_norm, torch.ones_like(x_norm)))
 
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.x)
         cov_prior = self.sampler._cov(self.x, self.x)
-        print(cov_prior)
         print(cov_func)
+        print(cov_prior)
         print(cov_prior-cov_func)
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=5e-2))
 

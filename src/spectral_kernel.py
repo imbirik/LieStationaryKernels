@@ -8,7 +8,7 @@ from src.space import AbstractManifold
 from src.utils import cartesian_prod
 from gpytorch.lazy import NonLazyTensor, MatmulLazyTensor
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dtype = torch.complex64
+dtype = torch.complex128
 
 
 class AbstractSpectralKernel(torch.nn.Module, ABC):

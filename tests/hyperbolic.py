@@ -5,7 +5,7 @@ from src.spectral_kernel import RandomSpectralKernel
 from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
 

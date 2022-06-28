@@ -11,7 +11,7 @@ import itertools as it
 from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
 from torch.autograd.functional import _vmap as vmap
 
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -93,6 +93,13 @@ class SO(CompactLieGroup):
     def inv(x: torch.Tensor):
         # (n, dim, dim)
         return torch.transpose(x, -2, -1)
+
+    @staticmethod
+    def close_to_id(x):
+        d = x.shape[-1]  # x = [...,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
 
 class SOLBEigenspace(LBEigenspaceWithSum):
@@ -183,18 +190,12 @@ class SOCharacter(LieGroupCharacter):
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
                        (1 * self.xi0(list(reversed(range(rank))), gamma))
 
-    @staticmethod
-    def close_to_eye(x):
-        d = x.shape[-1]  # x = [...,d,d]
-        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
-        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
-        return torch.all(torch.isclose(x_, eyes), dim=-1)
-
 
 class SO3Character(LieGroupCharacter):
     @staticmethod
     def torus_embed(x):
         cos = (vmap(torch.trace)(x) - 1) / 2
+        cos = torch.clip(cos, -1.0, 1.0)
         gamma = cos + 1j * torch.sqrt(1-torch.square(cos))
         return gamma
 
@@ -204,10 +205,3 @@ class SO3Character(LieGroupCharacter):
         numer = torch.pow(gamma, l+0.5) - torch.pow(torch.conj(gamma), l+0.5)
         denom = torch.sqrt(gamma) - torch.sqrt(torch.conj(gamma))
         return numer / denom
-
-    @staticmethod
-    def close_to_eye(x):
-        d = x.shape[-1]  # x = [...,d,d]
-        x_ = x.reshape(x.shape[:-2] + (-1,))  # [., d * d]
-        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
-        return torch.all(torch.isclose(x_, eyes), dim=-1)

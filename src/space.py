@@ -102,13 +102,16 @@ class HomogeneousSpace(AbstractManifold, ABC):
 
     def pairwise_diff(self, x, y):
         x_, y_ = self.M_to_G(x), self.M_to_G(y)
-        diff_ = self.G.pairwise_diff(x_, y_)
-        diff = self.G_to_M(diff_)
+        diff = self.G.pairwise_diff(x_, y_)
         return diff
 
     @abstractmethod
     def dist(self, x, y):
         raise NotImplementedError
+
+    def compute_inv_dimension(self, signature):
+        raise NotImplementedError
+
 
 class LBEigenfunction(ABC):
     """Laplace-Beltrami eigenfunction abstract base class"""
@@ -185,6 +188,7 @@ class AveragedLBEigenspace(LBEigenspaceWithSum):
         """
         self.initial_representation = representaion
         super().__init__(representaion.index, manifold=manifold)
+        self.inv_dimension = self.manifold.compute_inv_dimension(representaion.index)
 
     def compute_dimension(self):
         return self.initial_representation.compute_dimension()
@@ -209,25 +213,29 @@ class LieGroupCharacter(torch.nn.Module, ABC):
         # [n, dim, dim]
         chi = self.representation.dimension * self.chi(x)  # [n]
 
-        close_to_eye = self.close_to_eye(x)  # [n]
+        is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
+        chi = torch.where(is_close_to_id, self.representation.dimension**2 * torch.ones_like(chi), chi)
 
-        chi = torch.where(close_to_eye, self.representation.dimension**2 * torch.ones_like(chi), chi)
         return chi
 
 
 class AveragedLieGroupCharacter(torch.nn.Module, ABC):
-    def __init__(self, repreesntation, space: HomogeneousSpace, chi: LieGroupCharacter):
+    def __init__(self, represntation, space: HomogeneousSpace, chi: LieGroupCharacter):
         super().__init__()
-        self.representation = repreesntation
+        self.representation = represntation
         self.space = space
         self.chi = chi
 
 
     def forward(self, x):
-        x_ = self.space.M_to_G(x)
-        x_h = self.space.G.pairwise_diff(x_, self.space.h_samples)
+        x_h = self.space.G.pairwise_diff(x, self.space.h_samples)
         chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.average_order)
         result = torch.mean(chi_x_h, dim=-1)
+
+        is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
+        rep_dim = self.representation.dimension * self.representation.inv_dimension
+        result = torch.where(is_close_to_id,  rep_dim * torch.ones_like(result), result)
+
         return result
 
 
@@ -316,7 +324,7 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         n = x.shape[0]
         x_shift_flatten = self.manifold.pairwise_diff(x, self.shift) # (n * m, ...)
         _, a_flatten, _ = self.iwasawa_decomposition(x_shift_flatten)  # shape (n * m, rank)
-        log_a_flatten = torch.log(a_flatten).type(torch.complex64)
+        log_a_flatten = torch.log(a_flatten).type(torch.complex128)
         a = log_a_flatten.view(n, self.order, -1)
 
         lin_func = j*self.lmd + self.rho[None, :] # (m, rank)

@@ -9,7 +9,7 @@ from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 import os
 #os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 np.set_printoptions(precision=3)
 #device = 'cpu'

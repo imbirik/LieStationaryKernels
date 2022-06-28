@@ -9,7 +9,7 @@ from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
 from src.utils import cartesian_prod
 
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -32,7 +32,7 @@ class TestSO(unittest.TestCase):
 
     def test_sampler(self):
         true_ans = torch.eye(self.n, dtype=dtype, device=device).reshape((1, self.n, self.n)).repeat(self.x_size, 1, 1)
-        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans, atol=1e-5))
 
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.x)

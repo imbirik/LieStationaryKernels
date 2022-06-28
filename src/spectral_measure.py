@@ -3,7 +3,7 @@ import torch
 from torch.nn import Parameter
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dtype = torch.float32
+dtype = torch.float64
 from gpytorch.constraints import Positive
 #device = 'cpu'
 
@@ -22,6 +22,7 @@ class MaternSpectralMeasure(AbstractSpectralMeasure):
         self.lengthscale = torch.tensor([lengthscale], device=device, requires_grad=True)
         self.nu = torch.tensor([nu], device=device)
         self.variance = Parameter(torch.tensor([variance], device=device, requires_grad=True))
+
     def forward(self, eigenvalue):
         return torch.pow(self.nu[0]/(self.lengthscale[0] ** 2) + eigenvalue, -self.nu[0] - self.dim/4)
 

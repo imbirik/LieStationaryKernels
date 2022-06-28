@@ -9,7 +9,7 @@ import math
 import itertools
 from src.utils import vander_det, vander_det2, poly_eval_tensor
 from scipy.special import chebyu
-dtype = torch.float32
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -66,6 +66,14 @@ class SU(CompactLieGroup):
         # (n, dim, dim)
         return torch.conj(torch.transpose(x, -2, -1))
 
+    @staticmethod
+    def close_to_id(x):
+        d = x.shape[-1]  # x = [...,d,d]
+        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
+        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
+        return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
+
+
 
 class SULBEigenspace(LBEigenspaceWithSum):
     """The Laplace-Beltrami eigenspace for the special unitary group."""
@@ -114,13 +122,6 @@ class SUCharacter(LieGroupCharacter):
         vander = vander_det2(gammas)
         return torch.det(numer_mat) / vander
 
-    @staticmethod
-    def close_to_eye(x):
-        d = x.shape[-1]  # x = [...,d,d]
-        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
-        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
-        return torch.all(torch.isclose(x_, eyes), dim=-1)
-
 
 class SU2Character(LieGroupCharacter):
     def __init__(self, *, representation: LBEigenspaceWithSum):
@@ -134,10 +135,3 @@ class SU2Character(LieGroupCharacter):
     def chi(self, x):
         trace = torch.einsum('...ii->...', x)
         return poly_eval_tensor(trace / 2, self.coeffs)
-
-    @staticmethod
-    def close_to_eye(x):
-        d = x.shape[-1]  # x = [n,d,d]
-        x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
-        eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
-        return torch.all(torch.isclose(x_, eyes), dim=-1)

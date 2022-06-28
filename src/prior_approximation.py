@@ -8,7 +8,7 @@ from math import sqrt
 from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomSpectralKernel
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-dtype = torch.float32
+dtype = torch.float64
 
 
 class KarhunenLoeveExpansion(torch.nn.Module):
@@ -83,8 +83,8 @@ class RandomPhaseApproximation(torch.nn.Module):
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.basis_sum
             phase, weight = self.phases[i], self.weights[i]  # [num_phase, ...], [num_phase]
-            x_phase_inv = self.kernel.manifold.pairwise_diff(x, phase) # [len(x), num_phase, ...]
-            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(x_phase_inv).view(x.size()[0], self.phase_order)
+            phase_x_inv = self.kernel.manifold.pairwise_diff(phase, x) # [len(x), num_phase, ...]
+            eigen_embedding = torch.sqrt(self.kernel.measure(lmd)) * f(phase_x_inv).view(self.phase_order, x.size()[0]).T
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
         return torch.cat(embeddings, dim=1)

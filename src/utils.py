@@ -4,10 +4,11 @@ from torch.distributions.distribution import Distribution
 # from torch.distributions.utils import broadcast_all
 # from torch.distributions import constraints
 # from pyro.distributions.rejector import Rejector
-from math import sqrt
-dtype = torch.float32
+from math import sqrt, factorial
+dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
+
 
 def GOE_sampler(num_samples, n):
     samples = torch.randn(num_samples, n, n, device=device, dtype=dtype)
@@ -101,6 +102,19 @@ def fixed_length_partitions(n, L):
         partition[0] = s
 
 
+def hook_content_formula(lmd, n):
+    numer = 1
+    denom = 1
+
+    l_cols = [sum([row_l >= i+1 for row_l in lmd]) for i in range(lmd[0])]
+    for id_row, l_row in enumerate(lmd):
+        for id_col in range(l_row):
+            numer  *= (n + id_col - id_row)
+            denom *= l_cols[id_col] + l_row-id_row - id_col - 1
+
+    return numer/denom
+
+
 def lazy_property(fn):
     """Decorator that makes a property lazy-evaluated."""
     attr_name = '_lazy_' + fn.__name__
@@ -178,3 +192,4 @@ def lazy_property(fn):
 #     sampler = Rejector(GOE(dim=5), c_function_tanh, 0)
 #     print(sampler.rsample((10,)))
 #
+

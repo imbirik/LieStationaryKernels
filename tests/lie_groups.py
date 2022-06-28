@@ -84,7 +84,7 @@ class TestCompactLieGroups(unittest.TestCase):
         for irrep in self.group.lb_eigenspaces:
             torch.cuda.empty_cache()
             dim = irrep.dimension
-            if self.dtype in (torch.double, torch.float32) and dim <= 20 or self.dtype == torch.cdouble and dim <= 10:
+            if self.dtype in (torch.double, torch.float64) and dim <= 20 or self.dtype == torch.cdouble and dim <= 10:
                 basis = TranslatedCharactersBasis(representation=irrep)
                 num_samples = 10 ** 4
                 num_batches = 10 ** 2
