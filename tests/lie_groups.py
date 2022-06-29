@@ -29,13 +29,13 @@ torch.set_printoptions(precision=2, sci_mode=False, linewidth=160, edgeitems=15)
     {'group': SO, 'dim': 4, 'order': 10, 'dtype': torch.double},
     {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
     {'group': SO, 'dim': 6, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 8, 'order': 10, 'dtype': torch.double},
+    # {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
+    # {'group': SO, 'dim': 8, 'order': 10, 'dtype': torch.double},
     {'group': SU, 'dim': 2, 'order': 10, 'dtype': torch.cdouble},
     {'group': SU, 'dim': 3, 'order': 10, 'dtype': torch.cdouble},
     {'group': SU, 'dim': 4, 'order': 10, 'dtype': torch.cdouble},
     {'group': SU, 'dim': 5, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 6, 'order': 10, 'dtype': torch.cdouble},
+    # {'group': SU, 'dim': 6, 'order': 10, 'dtype': torch.cdouble},
 ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["group"].__name__}.'
                                                  f'{params_dict["dim"]}.{params_dict["order"]}')
 class TestCompactLieGroups(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestCompactLieGroups(unittest.TestCase):
         self.n, self.m = 20, 20
         self.x, self.y = self.group.rand(self.n), self.group.rand(self.m)
 
-    def _test_character_conjugation_invariance(self):
+    def test_character_conjugation_invariance(self):
         num_samples_x = 20
         num_samples_g = 20
         xs = self.group.rand(num_samples_x).unsqueeze(0)
@@ -66,7 +66,14 @@ class TestCompactLieGroups(unittest.TestCase):
             chi_vals_conj = chi(conjugates)
             self.assertTrue(torch.allclose(chi_vals_xs, chi_vals_conj))
 
-    def _test_characters_orthogonality(self):
+    def test_character_at_identity_equals_dimension(self):
+        identity = torch.eye(self.dim, dtype=self.dtype, device=device)
+        for irrep in self.group.lb_eigenspaces:
+            chi_val = irrep.basis_sum.chi(identity).item()
+            self.assertEqual(round(chi_val.real), irrep.dimension)
+            self.assertEqual(round(chi_val.imag), 0)
+
+    def test_characters_orthogonality(self):
         num_samples_x = 10**5
         xs = self.group.rand(num_samples_x)
         num_irreps = len(self.group.lb_eigenspaces)
@@ -100,11 +107,11 @@ class TestCompactLieGroups(unittest.TestCase):
                 print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
                 self.assertTrue(torch.allclose(sc_prod, eyes, atol=5e-2))
 
-    def _test_sampler(self):
+    def test_sampler(self):
         true_ans = torch.eye(self.dim, dtype=self.dtype, device=device).reshape((1, self.dim, self.dim)).repeat(self.n, 1, 1)
         self.assertTrue(torch.allclose(vmap(self.group.difference)(self.x, self.x), true_ans))
 
-    def _test_prior(self) -> None:
+    def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.y)
         cov_prior = self.sampler._cov(self.x, self.y)
         # print(torch.std(cov_func-cov_prior)/torch.std(cov_func))

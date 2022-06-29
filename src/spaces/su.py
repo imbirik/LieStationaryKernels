@@ -9,7 +9,8 @@ import math
 import itertools
 from src.utils import vander_det, vander_det2, poly_eval_tensor
 from scipy.special import chebyu
-dtype = torch.float64
+import sympy
+dtype = torch.cdouble
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -30,6 +31,9 @@ class SU(CompactLieGroup):
         self.rho = np.arange(self.n - 1, -self.n, -2) * 0.5
 
         super().__init__(order=order)
+
+        for irrep in self.lb_eigenspaces:
+            irrep.basis_sum._compute_character_formula()
 
     def dist(self, x, y):
         raise NotImplementedError
@@ -102,7 +106,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         if self.manifold.n == 2:
             return SU2Character(representation=self)
         else:
-            return SUCharacter(representation=self)
+            return SUCharacterDenominatorFree(representation=self)
 
 
 class SUCharacter(LieGroupCharacter):
@@ -121,6 +125,37 @@ class SUCharacter(LieGroupCharacter):
         numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
         vander = vander_det2(gammas)
         return torch.det(numer_mat) / vander
+
+
+class SUCharacterDenominatorFree(LieGroupCharacter):
+    def __init__(self, *, representation: SULBEigenspace):
+        super().__init__(representation=representation)
+        self._character_formula_computed = False
+
+    def _compute_character_fomula(self):
+        # print('computing character formula for {}'.format(self.representation.index))
+        n = self.representation.manifold.n
+        gammas = sympy.symbols(' '.join('g{}'.format(i) for i in range(1, n + 1)))
+        qs = [pk + n - k - 1 for k, pk in enumerate(self.representation.index)]
+        numer_mat = sympy.Matrix(n, n, lambda i, j: gammas[i]**qs[j])
+        vander = sympy.prod(gammas[i] - gammas[j] for i, j in itertools.combinations(range(n), r=2))
+        p = sympy.Poly(sympy.exquo(sympy.det(numer_mat), vander), gammas)
+        self.coeffs = torch.tensor(list(map(int, p.coeffs())), dtype=torch.int, device=device)
+        self.monoms = torch.tensor([list(map(int, monom)) for monom in p.monoms()], dtype=torch.int, device=device)
+        self._character_formula_computed = True
+
+    @staticmethod
+    def torus_embed(x):
+        return torch.linalg.eigvals(x)
+
+    def chi(self, x):
+        if not self._character_formula_computed:
+            self._compute_character_fomula()
+        gammas = self.torus_embed(x)
+        char_val = torch.zeros(gammas.shape[:-1], dtype=dtype, device=device)
+        for coeff, monom in zip(self.coeffs, self.monoms):
+            char_val += coeff * torch.prod(gammas ** monom, dim=-1)
+        return char_val
 
 
 class SU2Character(LieGroupCharacter):

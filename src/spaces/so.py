@@ -6,7 +6,9 @@ from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
 from functools import reduce
 import operator
 import math
-import itertools as it
+import itertools
+from more_itertools import always_iterable
+import sympy
 #from functorch import vmap
 from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
 from torch.autograd.functional import _vmap as vmap
@@ -35,6 +37,8 @@ class SO(CompactLieGroup):
         else:
             self.rho = np.arange(self.rank-1, -1, -1) + 0.5
         super().__init__(order=order)
+        for irrep in self.lb_eigenspaces:
+            irrep.basis_sum._compute_character_formula()
 
     def difference(self, x, y):
         return x @ y.T
@@ -102,13 +106,13 @@ class SOLBEigenspace(LBEigenspaceWithSum):
             qs = [pk + so.rank - k - 1 / 2 for k, pk in enumerate(signature)]
             rep_dim = reduce(operator.mul, (2 * qs[k] / math.factorial(2 * k + 1) for k in range(0, so.rank))) \
                       * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
-                                              for i, j in it.combinations(range(so.rank), 2)), 1)
+                                              for i, j in itertools.combinations(range(so.rank), 2)), 1)
             return int(round(rep_dim))
         else:
             qs = [pk + so.rank - k - 1 if k != so.rank - 1 else abs(pk) for k, pk in enumerate(signature)]
             rep_dim = int(reduce(operator.mul, (2 / math.factorial(2 * k) for k in range(1, so.rank)))
                           * reduce(operator.mul, ((qs[i] - qs[j]) * (qs[i] + qs[j])
-                                                  for i, j in it.combinations(range(so.rank), 2)), 1))
+                                                  for i, j in itertools.combinations(range(so.rank), 2)), 1))
             return int(round(rep_dim))
 
     def compute_lb_eigenvalue(self):
@@ -117,10 +121,11 @@ class SOLBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        if self.manifold.n == 3:
-            return SO3Character(representation=self)
-        else:
-            return SOCharacter(representation=self)
+        return SOCharacterDenominatorFree(representation=self)
+        # if self.manifold.n == 3:
+        #     return SO3Character(representation=self)
+        # else:
+        #     return SOCharacter(representation=self)
 
 
 class SOCharacter(LieGroupCharacter):
@@ -173,6 +178,85 @@ class SOCharacter(LieGroupCharacter):
                 sign = math.copysign(1, signature[-1])
                 return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
                        (1 * self.xi0(list(reversed(range(rank))), gamma))
+
+
+class SOCharacterDenominatorFree(LieGroupCharacter):
+    def __init__(self, *, representation: SOLBEigenspace):
+        super().__init__(representation=representation)
+        self._character_formula_computed = False
+
+    def _compute_character_formula(self):
+        # print('computing character formula for {}'.format(self.representation.index))
+        n = self.representation.manifold.n
+        rank = self.representation.manifold.rank
+        signature = self.representation.index
+        gammas = sympy.symbols(' '.join('g{}'.format(i + 1) for i in range(rank)))
+        gammas = tuple(always_iterable(gammas))
+        gammas_conj = sympy.symbols(' '.join('gc{}'.format(i + 1) for i in range(rank)))
+        gammas_conj = tuple(always_iterable(gammas_conj))
+        if n % 2:
+            gammas_sqrt = sympy.symbols(' '.join('gr{}'.format(i + 1) for i in range(rank)))
+            gammas_sqrt = tuple(always_iterable(gammas_sqrt))
+            gammas_conj_sqrt = sympy.symbols(' '.join('gcr{}'.format(i + 1) for i in range(rank)))
+            gammas_conj_sqrt = tuple(always_iterable(gammas_conj_sqrt))
+            def xi1(qs):
+                mat = sympy.Matrix(rank, rank, lambda i, j: gammas_sqrt[i]**qs[j]-gammas_conj_sqrt[i]**qs[j])
+                return sympy.det(mat)
+            # qs = [sympy.Integer(2*pk + 2*rank - 2*k - 1) / 2 for k, pk in enumerate(signature)]
+            qs = [2 * pk + 2 * rank - 2 * k - 1 for k, pk in enumerate(signature)]
+            # denom_pows = [sympy.Integer(2*k - 1) / 2 for k in range(rank, 0, -1)]
+            denom_pows = [2 * k - 1 for k in range(rank, 0, -1)]
+            numer = xi1(qs)
+            denom = xi1(denom_pows)
+            expr = sympy.ratsimpmodprime(numer / denom, [gr * gcr - 1 for gr, gcr in zip(gammas_sqrt, gammas_conj_sqrt)])
+            expr = expr.subs([gr ** 2, g] for gr, g in zip(gammas_sqrt, gammas))
+            expr = expr.subs([grc ** 2, gc] for grc, gc in zip(gammas_conj_sqrt, gammas_conj))
+        else:
+            def xi0(qs):
+                mat = sympy.Matrix(rank, rank, lambda i, j: gammas[i] ** qs[j] + gammas_conj[i] ** qs[j])
+                return sympy.det(mat)
+            def xi1(qs):
+                mat = sympy.Matrix(rank, rank, lambda i, j: gammas[i] ** qs[j] - gammas_conj[i] ** qs[j])
+                return sympy.det(mat)
+            qs = [pk + rank - k - 1 if k != rank - 1 else abs(pk) for k, pk in enumerate(signature)]
+            pm = signature[-1]
+            numer = xi0(qs)
+            if pm:
+                numer += (1 if pm > 0 else -1) * xi1(qs)
+            denom = xi0(list(reversed(range(rank))))
+            expr = sympy.ratsimpmodprime(numer/denom, [g*gc-1 for g, gc in zip(gammas, gammas_conj)])
+        p = sympy.Poly(expr, gammas + gammas_conj)
+        self.coeffs = torch.tensor(list(map(int, p.coeffs())), dtype=torch.int, device=device)
+        self.monoms = torch.tensor([list(map(int, monom)) for monom in p.monoms()], dtype=torch.int, device=device)
+        self._character_formula_computed = True
+
+    def torus_embed(self, x):
+        if self.representation.manifold.n % 2 == 1:
+            eigvals = torch.linalg.eigvals(x)
+            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
+            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
+            gamma = eigvals[..., 0:-1:2]
+            return gamma
+        else:
+            eigvals, eigvecs = torch.linalg.eig(x)
+            # c is a matrix transforming x into its canonical form (with 2x2 blocks)
+            c = torch.zeros_like(eigvecs)
+            c[..., ::2] = eigvecs[..., ::2].real
+            c[..., 1::2] = eigvecs[..., ::2].imag
+            c *= math.sqrt(2)
+            eigvals[..., 0] **= torch.det(c)
+            gamma = eigvals[..., ::2]
+            return gamma
+
+    def chi(self, x):
+        if not self._character_formula_computed:
+            self._compute_character_formula()
+        gammas = self.torus_embed(x)
+        gammas = torch.cat((gammas, gammas.conj()), dim=-1)
+        char_val = torch.zeros(gammas.shape[:-1], dtype=torch.cdouble, device=device)
+        for coeff, monom in zip(self.coeffs, self.monoms):
+            char_val += coeff * torch.prod(gammas ** monom, dim=-1)
+        return char_val
 
 
 class SO3Character(LieGroupCharacter):
