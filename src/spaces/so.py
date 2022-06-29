@@ -145,7 +145,7 @@ class SOCharacter(LieGroupCharacter):
             c[..., ::2] = eigvecs[..., ::2].real
             c[..., 1::2] = eigvecs[..., ::2].imag
             c *= math.sqrt(2)
-            eigvals[..., 0] **= torch.det(c)
+            eigvals[..., 0] = torch.pow(eigvals[..., 0], torch.det(c))
             gamma = eigvals[..., ::2]
             return gamma
 
