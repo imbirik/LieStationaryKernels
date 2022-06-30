@@ -10,6 +10,8 @@ import itertools
 from src.utils import vander_det, vander_det2, poly_eval_tensor
 from scipy.special import chebyu
 import sympy
+import json
+from pathlib import Path
 dtype = torch.cdouble
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -31,9 +33,6 @@ class SU(CompactLieGroup):
         self.rho = np.arange(self.n - 1, -self.n, -2) * 0.5
 
         super().__init__(order=order)
-
-        for irrep in self.lb_eigenspaces:
-            irrep.basis_sum._compute_character_formula()
 
     def dist(self, x, y):
         raise NotImplementedError
@@ -76,7 +75,6 @@ class SU(CompactLieGroup):
         x_ = x.reshape(x.shape[:-2] + (-1,))  # [..., d * d]
         eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
-
 
 
 class SULBEigenspace(LBEigenspaceWithSum):
@@ -128,29 +126,37 @@ class SUCharacter(LieGroupCharacter):
 
 
 class SUCharacterDenominatorFree(LieGroupCharacter):
-    def __init__(self, *, representation: SULBEigenspace):
+    def __init__(self, *, representation: SULBEigenspace, precomputed=True):
         super().__init__(representation=representation)
-        self._character_formula_computed = False
+        if precomputed:
+            group_name = '{}({})'.format(self.representation.manifold.__class__.__name__,
+                                         self.representation.manifold.n)
+            file_path = Path(__file__).with_name('precomputed_characters.json')
+            with file_path.open('r') as file:
+                character_formulas = json.load(file)
+                try:
+                    cs, ms = character_formulas[group_name][str(self.representation.index)]
+                    self.coeffs, self.monoms = (torch.tensor(data, dtype=torch.int, device=device) for data in (cs, ms))
+                except KeyError as e:
+                    raise KeyError('Unable to retrieve character parameters for signature {} of {}, '
+                                   'perhaps it is not precomputed.'.format(e.args[0], group_name)) from None
 
-    def _compute_character_fomula(self):
-        # print('computing character formula for {}'.format(self.representation.index))
+    def _compute_character_formula(self):
         n = self.representation.manifold.n
         gammas = sympy.symbols(' '.join('g{}'.format(i) for i in range(1, n + 1)))
         qs = [pk + n - k - 1 for k, pk in enumerate(self.representation.index)]
         numer_mat = sympy.Matrix(n, n, lambda i, j: gammas[i]**qs[j])
         vander = sympy.prod(gammas[i] - gammas[j] for i, j in itertools.combinations(range(n), r=2))
         p = sympy.Poly(sympy.exquo(sympy.det(numer_mat), vander), gammas)
-        self.coeffs = torch.tensor(list(map(int, p.coeffs())), dtype=torch.int, device=device)
-        self.monoms = torch.tensor([list(map(int, monom)) for monom in p.monoms()], dtype=torch.int, device=device)
-        self._character_formula_computed = True
+        coeffs = list(map(int, p.coeffs()))
+        monoms = [list(map(int, monom)) for monom in p.monoms()]
+        return coeffs, monoms
 
     @staticmethod
     def torus_embed(x):
         return torch.linalg.eigvals(x)
 
     def chi(self, x):
-        if not self._character_formula_computed:
-            self._compute_character_fomula()
         gammas = self.torus_embed(x)
         char_val = torch.zeros(gammas.shape[:-1], dtype=dtype, device=device)
         for coeff, monom in zip(self.coeffs, self.monoms):

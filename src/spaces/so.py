@@ -9,6 +9,8 @@ import math
 import itertools
 from more_itertools import always_iterable
 import sympy
+import json
+from pathlib import Path
 #from functorch import vmap
 from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
 from torch.autograd.functional import _vmap as vmap
@@ -37,8 +39,6 @@ class SO(CompactLieGroup):
         else:
             self.rho = np.arange(self.rank-1, -1, -1) + 0.5
         super().__init__(order=order)
-        for irrep in self.lb_eigenspaces:
-            irrep.basis_sum._compute_character_formula()
 
     def difference(self, x, y):
         return x @ y.T
@@ -181,12 +181,21 @@ class SOCharacter(LieGroupCharacter):
 
 
 class SOCharacterDenominatorFree(LieGroupCharacter):
-    def __init__(self, *, representation: SOLBEigenspace):
+    def __init__(self, *, representation: SOLBEigenspace, precomputed=True):
         super().__init__(representation=representation)
-        self._character_formula_computed = False
+        if precomputed:
+            group_name = '{}({})'.format(self.representation.manifold.__class__.__name__, self.representation.manifold.n)
+            file_path = Path(__file__).with_name('precomputed_characters.json')
+            with file_path.open('r') as file:
+                character_formulas = json.load(file)
+                try:
+                    cs, ms = character_formulas[group_name][str(self.representation.index)]
+                    self.coeffs, self.monoms = (torch.tensor(data, dtype=torch.int, device=device) for data in (cs, ms))
+                except KeyError as e:
+                    raise KeyError('Unable to retrieve character parameters for signature {} of {}, '
+                                   'perhaps it is not precomputed.'.format(e.args[0], group_name)) from None
 
     def _compute_character_formula(self):
-        # print('computing character formula for {}'.format(self.representation.index))
         n = self.representation.manifold.n
         rank = self.representation.manifold.rank
         signature = self.representation.index
@@ -226,9 +235,9 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
             denom = xi0(list(reversed(range(rank))))
             expr = sympy.ratsimpmodprime(numer/denom, [g*gc-1 for g, gc in zip(gammas, gammas_conj)])
         p = sympy.Poly(expr, gammas + gammas_conj)
-        self.coeffs = torch.tensor(list(map(int, p.coeffs())), dtype=torch.int, device=device)
-        self.monoms = torch.tensor([list(map(int, monom)) for monom in p.monoms()], dtype=torch.int, device=device)
-        self._character_formula_computed = True
+        coeffs = list(map(int, p.coeffs()))
+        monoms = [list(map(int, monom)) for monom in p.monoms()]
+        return coeffs, monoms
 
     def torus_embed(self, x):
         if self.representation.manifold.n % 2 == 1:
@@ -249,8 +258,6 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
             return gamma
 
     def chi(self, x):
-        if not self._character_formula_computed:
-            self._compute_character_formula()
         gammas = self.torus_embed(x)
         gammas = torch.cat((gammas, gammas.conj()), dim=-1)
         char_val = torch.zeros(gammas.shape[:-1], dtype=torch.cdouble, device=device)
