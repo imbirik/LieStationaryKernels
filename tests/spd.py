@@ -8,7 +8,7 @@ from src.spectral_kernel import RandomSpectralKernel
 from src.prior_approximation import RandomFourierApproximation
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 import os
-#os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 np.set_printoptions(precision=3)
@@ -19,7 +19,7 @@ def heat_kernel(x1, x2, t=1.0):
     def heat_kernel_unnorm(x1, x2, t=1.0):
         cl_1 = np.linalg.cholesky(x1)
         cl_2 = np.linalg.cholesky(x2)
-        diff = np.linalg.inv(cl_1) @ cl_2
+        diff = np.linalg.inv(cl_2) @ cl_1
         _, singular_values, _ = np.linalg.svd(diff)
         # Note: singular values that np.linalg.svd outputs are sorted, the following
         # code relies on this fact.
@@ -61,10 +61,10 @@ def heat_kernel(x1, x2, t=1.0):
 class TestSPD(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 3, 100
+        self.n, self.order = 2, 10**4
         self.space = SymmetricPositiveDefiniteMatrices(n=self.n, order=self.order)
 
-        self.lengthscale, self.nu = 2.0, 5.0
+        self.lengthscale, self.nu = 8.0, 5.0
         self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
@@ -99,7 +99,7 @@ class TestSPD(unittest.TestCase):
 
         print(cov1)
         print(cov2)
-        self.assertTrue(torch.allclose(cov1, cov2, atol=1e-2))
+        self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2))
 
     def test_compare_with_sawyer(self):
         assert self.n == 2, "dim should be equal to 2"
@@ -109,6 +109,7 @@ class TestSPD(unittest.TestCase):
         for i in range(self.x_size):
             for j in range(self.x_size):
                 x_i, x_j = self.x[i].cpu().detach().numpy(), self.x[j].cpu().detach().numpy()
-                cov_sawyer[i][j] = heat_kernel(x1=x_i, x2=x_j, t=self.lengthscale*self.lengthscale/4)
+                cov_sawyer[i][j] = heat_kernel(x1=x_i, x2=x_j, t=self.lengthscale*self.lengthscale/2)
         print(cov_sawyer)
-        self.assertTrue(np.allclose(cov_kernel, cov_sawyer))
+        self.assertTrue(np.allclose(cov_kernel, cov_sawyer, atol=5e-2))
+
