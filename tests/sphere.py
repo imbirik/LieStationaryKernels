@@ -8,7 +8,8 @@ from src.spaces.sphere import Sphere
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
-
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -16,11 +17,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestSphere(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 6, 4
+        self.n, self.order = 2, 15
         self.space = Sphere(self.n, order=self.order)
 
-        self.lengthscale, self.nu = 3.0, 2.0
-        self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
+        self.lengthscale, self.nu, self.variance = 1.0, 2.0, 5
+        self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale, self.variance)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
@@ -36,10 +37,13 @@ class TestSphere(unittest.TestCase):
         self.assertTrue(torch.allclose(cov_space, cov_func))
 
     def test_prior(self) -> None:
+        self.y = self.x
         cov_func = self.func_kernel(self.x, self.y)
         cov_prior = self.sampler._cov(self.x, self.y)
+        print(cov_prior)
+        print(cov_func)
         # print(torch.max(torch.abs(cov_prior-cov_func)).item())
-        self.assertTrue(torch.allclose(cov_prior, cov_func, atol=1e-2))
+        self.assertTrue(torch.allclose(cov_prior, cov_func, atol=5e-2))
 
     def test_sampler(self):
         true_ans = torch.ones(self.x_size, dtype=dtype, device=device)

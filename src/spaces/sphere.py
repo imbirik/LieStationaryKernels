@@ -33,7 +33,7 @@ class Sphere(AbstractManifold, Hypersphere):
         Hypersphere.__init__(self, self.n)
 
         self.fundamental_system = FundamentalSystemCache(self.n + 1)
-        self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(1, self.order + 1)]
+        self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(0, self.order)]
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -118,7 +118,7 @@ class GegenbauerPolynomials(torch.nn.Module):
         # Two first polynomials is quite pretty
         # C_0 = 1, C_1 = 2\alpha*x
         if self.n == 0:
-            coefficients[0] = 0
+            coefficients[0] = 1
         if self.n == 1:
             coefficients[1] = 2 * self.alpha
         if self.n >= 2:

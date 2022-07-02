@@ -33,7 +33,7 @@ class TestSU(unittest.TestCase):
 
     def test_sampler(self):
         true_ans = torch.eye(self.n, dtype=dtype, device=device).reshape((1, self.n, self.n)).repeat(self.x_size, 1, 1)
-        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x), true_ans))
+        self.assertTrue(torch.allclose(vmap(self.space.difference)(self.x, self.x).real, true_ans))
 
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.y)

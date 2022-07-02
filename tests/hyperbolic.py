@@ -48,8 +48,6 @@ class TestHyperbolic(unittest.TestCase):
         eye_embed = exp(self.space.id)  # (1, order)
         cov_flatten = x_yinv_embed @ (torch.conj(eye_embed).T)
         cov2 = cov_flatten.view(self.x.size()[0], self.y.size()[0]).real/self.order
-        print(cov1)
-        print(cov2)
         # print(torch.max(torch.abs(cov1 - cov2)).item())
         self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2))
 

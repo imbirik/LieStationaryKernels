@@ -37,9 +37,6 @@ class TestStiefel(unittest.TestCase):
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.x)
         cov_prior = self.sampler._cov(self.x, self.x)
-        print(cov_func)
-        print(cov_prior)
-        print(cov_prior-cov_func)
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=5e-2))
 
     def embed(self, f, x):
@@ -59,8 +56,6 @@ class TestStiefel(unittest.TestCase):
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
             cov2 = (embed_x @ torch.conj(embed_y.T))/dim_sq_f
-            print(cov1)
-            print(cov2)
             self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2, rtol=5e-2))
             print('passed')
 

@@ -32,14 +32,14 @@ class EigenbasisSumKernel(AbstractSpectralKernel):
     def forward(self, x, y=None, normalize=True):
         if y is None:
             y = x
-        x_yinv = self.manifold.pairwise_diff(x, y)
+        x_y_diff = self.manifold.pairwise_diff(x, y)
         cov = torch.zeros(len(x), len(y), dtype=dtype, device=device)
         for eigenspace in self.manifold.lb_eigenspaces:
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.basis_sum
-            cov += self.measure(lmd) * f(x_yinv).view(x.size()[0], y.size()[0])
+            cov += self.measure(lmd) * f(x_y_diff).view(x.size()[0], y.size()[0])
         if normalize:
-            return cov.real/self.normalizer
+            return self.measure.variance[0] * cov.real/self.normalizer
         else:
             return cov.real
 

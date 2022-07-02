@@ -3,7 +3,8 @@ import torch
 #from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 import numpy as np
-from src.spaces.grassmanian import Grassmanian
+from parameterized import parameterized_class
+from src.spaces.grassmannian import Grassmannian, OrientedGrassmannian
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
@@ -12,20 +13,31 @@ from src.utils import cartesian_prod
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-class TestStiefel(unittest.TestCase):
+# @parameterized_class([
+#     {'space': Grassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
+#     {'space': Grassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
+#     {'space': Grassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
+#     {'space': Grassmannian, 'n': 5, 'm': 1, 'order': 10, 'dtype': torch.double},
+#     {'space': OrientedGrassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
+#     {'space': OrientedGrassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
+#     {'space': OrientedGrassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
+#     {'space': OrientedGrassmannian, 'n': 5, 'm': 1, 'order': 10, 'dtype': torch.double},
+# ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["space"].__name__}.'
+#                                                  f'{params_dict["n"]},{params_dict["m"]}.{params_dict["order"]}')
+class TestGrassmanian(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.m = 5, 2
-        self.order, self.average_order = 10, 10**2
-        self.space = Grassmanian(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
+        self.n, self.m = 3, 1
+        self.order, self.average_order = 10, 20**2
+        self.space = Grassmannian(self.n, self.m, self.order)
+        #self.space = Grassmannian(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
         self.lengthscale, self.nu = 1.0, 5.0
         self.measure = SqExpSpectralMeasure(self.space.dim, self.lengthscale)
         #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
 
         self.func_kernel = EigenbasisSumKernel(measure=self.measure, manifold=self.space)
-        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=10**3)
+        self.sampler = RandomPhaseApproximation(kernel=self.func_kernel, phase_order=20**2)
 
         self.x_size, self.y_size = 5, 5
         self.x, self.y = self.space.rand(self.x_size), self.space.rand(self.y_size)
@@ -33,6 +45,13 @@ class TestStiefel(unittest.TestCase):
     def test_sampler(self):
         x_norm = torch.norm(self.x, dim=1)
         self.assertTrue(torch.allclose(x_norm, torch.ones_like(x_norm)))
+
+    def test_symmetry(self):
+        if self.m == 1 and isinstance(self.space, Grassmannian):
+            cov = self.func_kernel(self.x, -self.x)
+            print(cov)
+            diag_cov = torch.diagonal(cov)
+            self.assertTrue(torch.allclose(diag_cov, torch.ones_like(diag_cov), atol=5e-2))
 
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.x)

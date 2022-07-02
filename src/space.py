@@ -58,16 +58,22 @@ class CompactLieGroup(AbstractManifold, ABC):
         """Calculate the group inverse of a batch of group elements"""
         raise NotImplementedError
 
-    def pairwise_diff(self, x, y):
+    def pairwise_diff(self, x, y, reverse=False):
         """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
-        y_inv = self.inv(y)
-        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,...] and [n,m,...]
+        if not reverse:
+            # computes xy^{-1}
+            y_inv = self.inv(y)
+            x_, y_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
+        else:
+            # computes x^{-1}y
+            x_inv = self.inv(x)
+            x_, y_ = cartesian_prod(x_inv, y)  # [n,m,d,d] and [n,m,d,d]
 
         x_flatten = torch.reshape(x_, (-1, self.n, self.n))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, self.n, self.n))
+        y_flatten = torch.reshape(y_, (-1, self.n, self.n))
 
-        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
-        return x_yinv
+        x_y_ = torch.bmm(x_flatten, y_flatten)  # [n*m, ...]
+        return x_y_
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
@@ -102,7 +108,8 @@ class HomogeneousSpace(AbstractManifold, ABC):
 
     def pairwise_diff(self, x, y):
         x_, y_ = self.M_to_G(x), self.M_to_G(y)
-        diff = self.G.pairwise_diff(x_, y_)
+        # We use inverse, since elements of form xH, yH and therefore a difference is Hx^{-1}yH
+        diff = self.G.pairwise_diff(x_, y_, reverse=True)
         return diff
 
     @abstractmethod
@@ -232,9 +239,9 @@ class AveragedLieGroupCharacter(torch.nn.Module, ABC):
         chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.average_order)
         result = torch.mean(chi_x_h, dim=-1)
 
-        is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
-        rep_dim = self.representation.dimension * self.representation.inv_dimension
-        result = torch.where(is_close_to_id,  rep_dim * torch.ones_like(result), result)
+        #is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
+        #rep_dim = self.representation.dimension * self.representation.inv_dimension
+        #result = torch.where(is_close_to_id,  rep_dim * torch.ones_like(result), result)
 
         return result
 
@@ -291,13 +298,12 @@ class NonCompactSymmetricSpace(AbstractManifold, ABC):
     def pairwise_diff(self, x, y):
         """for x of size n and y of size m computes x_i-y_j and represent as array [n*m,...]"""
         y_inv = self.inv(y)
-        x_, y_inv_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
-
+        x_, y_ = cartesian_prod(x, y_inv)  # [n,m,d,d] and [n,m,d,d]
         x_flatten = torch.reshape(x_, (-1, self.n, self.n))
-        y_inv_flatten = torch.reshape(y_inv_, (-1, self.n, self.n))
+        y_flatten = torch.reshape(y_, (-1, self.n, self.n))
 
-        x_yinv = torch.bmm(x_flatten, y_inv_flatten)  # [n*m, ...]
-        return x_yinv
+        x_y_ = torch.bmm(x_flatten, y_flatten)  # [n*m, ...]
+        return x_y_
 
 
 class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
