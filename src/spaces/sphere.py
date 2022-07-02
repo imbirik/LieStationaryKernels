@@ -45,7 +45,7 @@ class Sphere(AbstractManifold, Hypersphere):
         x = x / torch.norm(x, dim=1, keepdim=True)
         return x
 
-    def pairwise_diff(self, x, y):
+    def pairwise_embed(self, x, y):
         # x -- [n,d+1]
         # y -- [m, d+1]
         x_, y_ = cartesian_prod(x, y)
