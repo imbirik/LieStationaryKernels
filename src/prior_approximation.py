@@ -71,7 +71,7 @@ class RandomPhaseApproximation(torch.nn.Module):
         return torch.randn(self.phase_order*self.approx_order, device=device, dtype=dtype)
 
     def sample_phases(self):
-        return [self.kernel.manifold.rand(self.phase_order) for _ in range(self.approx_order)]
+        return self.kernel.manifold.rand(self.phase_order)
 
     def resample(self):
         self.weights = self.sample_weights()
@@ -79,14 +79,15 @@ class RandomPhaseApproximation(torch.nn.Module):
 
     def make_embedding(self, x):
         embeddings = []
+        phases = self.phases  # [num_phase, ...]
+        # left multiplication
+        phase_x_inv = self.kernel.manifold.pairwise_embed(phases, x)  # [len(x), num_phase, ...]
+
         for i, eigenspace in enumerate(islice(self.kernel.manifold.lb_eigenspaces, self.approx_order)):
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.basis_sum
-            phase, weight = self.phases[i], self.weights[i]  # [num_phase, ...], [num_phase]
-            phase_x_inv = self.kernel.manifold.pairwise_diff(phase, x) # [len(x), num_phase, ...]
-            eigen_embedding = f(phase_x_inv).real
-            eigen_embedding = torch.sqrt(self.kernel.measure.variance[0] * self.kernel.measure(lmd)) \
-                              * eigen_embedding.view(self.phase_order, x.size()[0]).T
+            eigen_embedding = f(phase_x_inv).real.view(self.phase_order, x.size()[0]).T
+            eigen_embedding = torch.sqrt(self.kernel.measure.variance[0] * self.kernel.measure(lmd)) * eigen_embedding
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
         return torch.cat(embeddings, dim=1)

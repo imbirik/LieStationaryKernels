@@ -55,15 +55,20 @@ class CompactLieGroup(AbstractManifold, ABC):
     @staticmethod
     @abstractmethod
     def inv(x):
-        """Calculate the group inverse of a batch of group elements"""
+        """Calculates the group inverse of a batch of group elements"""
+        raise NotImplementedError
+
+    def torus_embed(self, x):
+        """Return corresponding element of maximal torus"""
         raise NotImplementedError
 
     def pairwise_diff(self, x, y, reverse=False):
-        """for x of size n and y of size n computes x_i-y_j and represent as array [n*m,...]"""
+        """If reverse is False for x of size n and y of size n computes x_i*y_j^{-1} and represent as array [n*m,...]
+            if reverse is True then compute same but in this case for x_i^{-1}*y_j"""
         if not reverse:
             # computes xy^{-1}
             y_inv = self.inv(y)
-            x_, y_ = cartesian_prod(x, y_inv) # [n,m,d,d] and [n,m,d,d]
+            x_, y_ = cartesian_prod(x, y_inv)  # [n,m,d,d] and [n,m,d,d]
         else:
             # computes x^{-1}y
             x_inv = self.inv(x)
@@ -74,6 +79,13 @@ class CompactLieGroup(AbstractManifold, ABC):
 
         x_y_ = torch.bmm(x_flatten, y_flatten)  # [n*m, ...]
         return x_y_
+
+    def pairwise_embed(self, x, y):
+        """for x of size n and y of size n computes embedding corresponding for pair x_i and y_j
+         and represent as array [n*m,...]"""
+        x_y_ = self.pairwise_diff(x, y)
+        x_y_gammas = self.torus_embed(x_y_)
+        return x_y_gammas
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
@@ -107,10 +119,16 @@ class HomogeneousSpace(AbstractManifold, ABC):
         return self.G_to_M(raw_samples)
 
     def pairwise_diff(self, x, y):
+        """For arrays of form x_iH, y_jH computes difference Hx_i^{-1}y_jH """
         x_, y_ = self.M_to_G(x), self.M_to_G(y)
-        # We use inverse, since elements of form xH, yH and therefore a difference is Hx^{-1}yH
         diff = self.G.pairwise_diff(x_, y_, reverse=True)
         return diff
+
+    def pairwise_embed(self, x, y):
+        """For arrays of form x_iH, y_jH computes embedding corresponding to x_i, y_j
+        i.e. flattened array of form G.embed(x_i^{-1}y_jh_k)"""
+        x_y_ = self.pairwise_diff(x, y)
+        return self.G.pairwise_embed(x_y_, self.h_samples)
 
     @abstractmethod
     def dist(self, x, y):
@@ -216,12 +234,12 @@ class LieGroupCharacter(torch.nn.Module, ABC):
     def chi(self, x):
         raise NotImplementedError
 
-    def forward(self, x):
+    def forward(self, gammas):
         # [n, dim, dim]
-        chi = self.representation.dimension * self.chi(x)  # [n]
+        chi = self.representation.dimension * self.chi(gammas)  # [n]
 
-        is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
-        chi = torch.where(is_close_to_id, self.representation.dimension**2 * torch.ones_like(chi), chi)
+        #is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
+        #chi = torch.where(is_close_to_id, self.representation.dimension**2 * torch.ones_like(chi), chi)
 
         return chi
 
@@ -234,9 +252,8 @@ class AveragedLieGroupCharacter(torch.nn.Module, ABC):
         self.chi = chi
 
 
-    def forward(self, x):
-        x_h = self.space.G.pairwise_diff(x, self.space.h_samples)
-        chi_x_h = self.chi(x_h).reshape(x.size()[0], self.space.average_order)
+    def forward(self, gammas_x_h):
+        chi_x_h = self.chi(gammas_x_h).reshape(-1, self.space.average_order)
         result = torch.mean(chi_x_h, dim=-1)
 
         #is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]

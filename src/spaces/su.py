@@ -76,6 +76,10 @@ class SU(CompactLieGroup):
         eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
+    @staticmethod
+    def torus_embed(x):
+        return torch.linalg.eigvals(x)
+
 
 class SULBEigenspace(LBEigenspaceWithSum):
     """The Laplace-Beltrami eigenspace for the special unitary group."""
@@ -106,19 +110,13 @@ class SULBEigenspace(LBEigenspaceWithSum):
         else:
             return SUCharacterDenominatorFree(representation=self)
 
-
 class SUCharacter(LieGroupCharacter):
     """Representation character for special unitary group"""
 
-    @staticmethod
-    def torus_embed(x):
-        return torch.linalg.eigvals(x)
-
-    def chi(self, x):
+    def chi(self, gammas):
         n = self.representation.manifold.n
         signature = self.representation.index
         # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
-        gammas = self.torus_embed(x)
         qs = [pk + n - k - 1 for k, pk in enumerate(signature)]
         numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
         vander = vander_det2(gammas)
@@ -152,12 +150,7 @@ class SUCharacterDenominatorFree(LieGroupCharacter):
         monoms = [list(map(int, monom)) for monom in p.monoms()]
         return coeffs, monoms
 
-    @staticmethod
-    def torus_embed(x):
-        return torch.linalg.eigvals(x)
-
-    def chi(self, x):
-        gammas = self.torus_embed(x)
+    def chi(self, gammas):
         char_val = torch.zeros(gammas.shape[:-1], dtype=dtype, device=device)
         for coeff, monom in zip(self.coeffs, self.monoms):
             char_val += coeff * torch.prod(gammas ** monom, dim=-1)
@@ -168,10 +161,6 @@ class SU2Character(LieGroupCharacter):
     def __init__(self, *, representation: LBEigenspaceWithSum):
         super().__init__(representation=representation)
         self.coeffs = chebyu(self.representation.index[0]).coef
-
-    @staticmethod
-    def torus_embed(x):
-        return torch.linalg.eigvals(x)
 
     def chi(self, x):
         trace = torch.einsum('...ii->...', x)

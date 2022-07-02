@@ -43,8 +43,8 @@ class TestSU(unittest.TestCase):
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=1e-2))
 
     def embed(self, f, x):
-        phase, weight = self.sampler.phases[0], self.sampler.weights[0]  # [num_phase, ...], [num_phase]
-        x_phase_inv = self.space.pairwise_diff(x, phase)
+        phase, weight = self.sampler.phases, self.sampler.weights[0]  # [num_phase, ...], [num_phase]
+        x_phase_inv = self.space.pairwise_embed(x, phase)
         eigen_embedding = f(x_phase_inv).view(x.size()[0], phase.size()[0])
         eigen_embedding = eigen_embedding / np.sqrt(
             self.sampler.phase_order)
@@ -52,7 +52,7 @@ class TestSU(unittest.TestCase):
 
     def test_eigenfunction(self) -> None:
         x, y = self.space.rand(2), self.space.rand(2)
-        x_yinv = self.space.pairwise_diff(x, y)
+        x_yinv = self.space.pairwise_embed(x, y)
         for eigenspace in self.space.lb_eigenspaces:
             f = eigenspace.basis_sum
             dim_sq_f = f.representation.dimension ** 2

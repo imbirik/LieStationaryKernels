@@ -89,6 +89,24 @@ class SO(CompactLieGroup):
         eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
+    def torus_embed(self, x):
+        if self.n % 2 == 1:
+            eigvals = torch.linalg.eigvals(x)
+            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
+            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
+            gamma = eigvals[..., 0:-1:2]
+            return gamma
+        else:
+            eigvals, eigvecs = torch.linalg.eig(x)
+            # c is a matrix transforming x into its canonical form (with 2x2 blocks)
+            c = torch.zeros_like(eigvecs)
+            c[..., ::2] = eigvecs[..., ::2].real
+            c[..., 1::2] = eigvecs[..., ::2].imag
+            c *= math.sqrt(2)
+            eigvals[..., 0] **= torch.det(c)
+            gamma = eigvals[..., ::2]
+            return gamma
+
 
 class SOLBEigenspace(LBEigenspaceWithSum):
     """The Laplace-Beltrami eigenspace for the special orthogonal group."""
@@ -131,23 +149,6 @@ class SOLBEigenspace(LBEigenspaceWithSum):
 class SOCharacter(LieGroupCharacter):
     """Representation character for special orthogonal group"""
     # @staticmethod
-    def torus_embed(self, x):
-        if self.representation.manifold.n % 2 == 1:
-            eigvals = torch.linalg.eigvals(x)
-            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
-            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
-            gamma = eigvals[..., 0:-1:2]
-            return gamma
-        else:
-            eigvals, eigvecs = torch.linalg.eig(x)
-            # c is a matrix transforming x into its canonical form (with 2x2 blocks)
-            c = torch.zeros_like(eigvecs)
-            c[..., ::2] = eigvecs[..., ::2].real
-            c[..., 1::2] = eigvecs[..., ::2].imag
-            c *= math.sqrt(2)
-            eigvals[..., 0] = torch.pow(eigvals[..., 0], torch.det(c))
-            gamma = eigvals[..., ::2]
-            return gamma
 
     @staticmethod
     def xi0(qs, gamma):
@@ -163,7 +164,7 @@ class SOCharacter(LieGroupCharacter):
         rank = self.representation.manifold.rank
         signature = self.representation.index
         # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
-        gamma = self.torus_embed(x)
+        gamma = self.representation.manifold.torus_embed(x)
         if self.representation.manifold.n % 2:
             qs = [pk + rank - k - 1 / 2 for k, pk in enumerate(signature)]
             return self.xi1(qs, gamma) / \
@@ -239,26 +240,7 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
         monoms = [list(map(int, monom)) for monom in p.monoms()]
         return coeffs, monoms
 
-    def torus_embed(self, x):
-        if self.representation.manifold.n % 2 == 1:
-            eigvals = torch.linalg.eigvals(x)
-            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
-            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
-            gamma = eigvals[..., 0:-1:2]
-            return gamma
-        else:
-            eigvals, eigvecs = torch.linalg.eig(x)
-            # c is a matrix transforming x into its canonical form (with 2x2 blocks)
-            c = torch.zeros_like(eigvecs)
-            c[..., ::2] = eigvecs[..., ::2].real
-            c[..., 1::2] = eigvecs[..., ::2].imag
-            c *= math.sqrt(2)
-            eigvals[..., 0] **= torch.det(c)
-            gamma = eigvals[..., ::2]
-            return gamma
-
-    def chi(self, x):
-        gammas = self.torus_embed(x)
+    def chi(self, gammas):
         gammas = torch.cat((gammas, gammas.conj()), dim=-1)
         char_val = torch.zeros(gammas.shape[:-1], dtype=torch.cdouble, device=device)
         for coeff, monom in zip(self.coeffs, self.monoms):
@@ -268,15 +250,10 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
 
 class SO3Character(LieGroupCharacter):
     @staticmethod
-    def torus_embed(x):
-        cos = (vmap(torch.trace)(x) - 1) / 2
-        cos = torch.clip(cos, -1.0, 1.0)
-        gamma = cos + 1j * torch.sqrt(1-torch.square(cos))
-        return gamma
 
     def chi(self, x):
         l = self.representation.index[0]
-        gamma = self.torus_embed(x)
+        gamma = self.representation.manifold.torus_embed(x)
         numer = torch.pow(gamma, l+0.5) - torch.pow(torch.conj(gamma), l+0.5)
         denom = torch.sqrt(gamma) - torch.sqrt(torch.conj(gamma))
         return numer / denom
