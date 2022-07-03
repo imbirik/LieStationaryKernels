@@ -105,10 +105,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
 
     def compute_basis_sum(self):
-        if self.manifold.n == 2:
-            return SU2Character(representation=self)
-        else:
-            return SUCharacterDenominatorFree(representation=self)
+        return SUCharacterDenominatorFree(representation=self)
 
 class SUCharacter(LieGroupCharacter):
     """Representation character for special unitary group"""

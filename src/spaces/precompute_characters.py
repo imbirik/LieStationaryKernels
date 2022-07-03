@@ -81,6 +81,7 @@ groups = [
     (SO, 4, SOCharacterDenominatorFree),
     (SO, 5, SOCharacterDenominatorFree),
     (SO, 6, SOCharacterDenominatorFree),
+    (SU, 2, SUCharacterDenominatorFree),
     (SU, 3, SUCharacterDenominatorFree),
     (SU, 4, SUCharacterDenominatorFree),
     (SU, 5, SUCharacterDenominatorFree),
