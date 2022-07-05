@@ -9,6 +9,7 @@ import warnings
 #from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 from src.space import LBEigenspaceWithSum, LieGroupCharacter, AveragedLieGroupCharacter
+from src.utils import cartesian_prod
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -60,7 +61,7 @@ class _S_O_O:
 class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
     """Class for oriented grassmannian manifold represented as SO(n)/SO(m)xSO(n-m)"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
-    def __init__(self, n, m, order=10, average_order=1000):
+    def __init__(self, n, m, order=10, average_order=100):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m
@@ -136,7 +137,17 @@ class Grassmannian(HomogeneousSpace, Grassmannian_):
         return x
 
     def dist(self, x, y):
-        raise NotImplementedError
+        """from https://pymanopt.org/docs/latest/_modules/pymanopt/manifolds/grassmann.html"""
+        _, s, _ = torch.linalg.svd(torch.bmm(torch.transpose(x, dim0=-2, dim1=-1), y))
+        s[s > 1] = 1
+        s = torch.arccos(s)
+        return torch.linalg.norm(s, dim=1)
+
+    def pairwise_dist(self, x, y):
+        x_, y_ = cartesian_prod(x, y)
+        x_flatten = x_.reshape((-1, self.n, self.m))
+        y_flatten = y_.reshape((-1, self.n, self.m))
+        return self.dist(x_flatten, y_flatten).reshape(x.shape[0], y.shape[0])
 
     def close_to_id(self, x):
         x_ = x[:, :self.m, :self.m].reshape(x.shape[:-2] + (-1,))

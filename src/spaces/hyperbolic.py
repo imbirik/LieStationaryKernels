@@ -70,7 +70,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from Hyperbolic space since Haar measure is infinite.
            We will sample from unit ball uniformly. """
         sphere = self.rand_phase(n)
-        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n) #torch.pow((torch.rand(n, device=device, dtype=dtype)), self.n)
+        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n)
         return sphere * r[:, None].clone()
 
     def inv(self, x):

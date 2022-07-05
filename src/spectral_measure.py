@@ -24,7 +24,7 @@ class MaternSpectralMeasure(AbstractSpectralMeasure):
         self.variance = Parameter(torch.tensor([variance], device=device, dtype=dtype, requires_grad=True))
 
     def forward(self, eigenvalue):
-        return torch.pow(self.nu[0]/(self.lengthscale[0] ** 2) + eigenvalue, -self.nu[0] - self.dim/4)
+        return torch.pow(self.nu[0]/(self.lengthscale[0] * self.lengthscale[0] / 2.0) + eigenvalue, -self.nu[0] - self.dim/4)
 
 
 class SqExpSpectralMeasure(AbstractSpectralMeasure):
@@ -34,4 +34,4 @@ class SqExpSpectralMeasure(AbstractSpectralMeasure):
         self.variance = Parameter(torch.tensor([variance], device=device, dtype=dtype, requires_grad=True))
 
     def forward(self, eigenvalues):
-        return torch.exp((-self.lengthscale[0] ** 2)/2 * eigenvalues)
+        return torch.exp(-self.lengthscale.clone() * self.lengthscale.clone()/2.0 * eigenvalues)

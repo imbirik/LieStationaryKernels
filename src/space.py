@@ -17,10 +17,10 @@ class AbstractManifold(ABC):
         # self.dim = None
         # self.order = None
 
-    @abstractmethod
-    def dist(self, x, y):
+    # @abstractmethod
+    # def dist(self, x, y):
         # compute distance between x and y
-        raise NotImplementedError
+        # raise NotImplementedError
 
     # @abstractmethod
     # def difference(self, x, y):

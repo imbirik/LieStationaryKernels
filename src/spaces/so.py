@@ -12,11 +12,13 @@ import sympy
 import json
 from pathlib import Path
 #from functorch import vmap
-from geomstats.geometry.special_orthogonal import _SpecialOrthogonalMatrices
+import pymanopt
+from pymanopt.manifolds.special_orthogonal_group import SpecialOrthogonalGroup
 from torch.autograd.functional import _vmap as vmap
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+pi = 2*torch.acos(torch.zeros(1)).item()
 
 
 class SO(CompactLieGroup):
@@ -38,13 +40,29 @@ class SO(CompactLieGroup):
             self.rho = np.arange(self.rank-1, -1, -1)
         else:
             self.rho = np.arange(self.rank-1, -1, -1) + 0.5
-        super().__init__(order=order)
+        self.id = torch.eye(self.n, device=device, dtype=dtype)
+        CompactLieGroup.__init__(self, order=order)
+
 
     def difference(self, x, y):
         return x @ y.T
 
     def dist(self, x, y):
-        raise NotImplementedError
+        """Batched geodesic distance"""
+        diff = torch.bmm(x, self.inv(y))
+        torus_diff = self.torus_embed(diff)
+        log_torus_diff = torch.arccos(torus_diff.real)
+        dist = math.sqrt(2) * torch.minimum(log_torus_diff, 2 * pi - log_torus_diff)
+        dist = torch.norm(dist, dim=1)
+        return dist
+
+    def pairwise_dist(self, x, y):
+        """For n points x_i and m points y_j computed dist(x_i,y_j)"""
+        x_y_ = self.pairwise_embed(x, y)
+        log_x_y_ = torch.arccos(x_y_.real)
+        dist = math.sqrt(2)*torch.minimum(log_x_y_, 2*pi-log_x_y_)
+        dist = torch.norm(dist, dim=1).reshape(x.shape[0], y.shape[0])
+        return dist
 
     def rand(self, n=1):
         h = torch.randn((n, self.n, self.n), device=device, dtype=dtype)
@@ -103,7 +121,7 @@ class SO(CompactLieGroup):
             c[..., ::2] = eigvecs[..., ::2].real
             c[..., 1::2] = eigvecs[..., ::2].imag
             c *= math.sqrt(2)
-            eigvals[..., 0] **= torch.det(c)
+            eigvals[..., 0] = torch.pow(eigvals[..., 0], torch.det(c))
             gamma = eigvals[..., ::2]
             return gamma
 
@@ -136,7 +154,8 @@ class SOLBEigenspace(LBEigenspaceWithSum):
     def compute_lb_eigenvalue(self):
         np_sgn = np.array(self.index)
         rho = self.manifold.rho
-        return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
+        lb_eigenvalue = np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
+        return lb_eigenvalue.item()
 
     def compute_basis_sum(self):
         return SOCharacterDenominatorFree(representation=self)
