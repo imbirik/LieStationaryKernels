@@ -100,9 +100,11 @@ class SULBEigenspace(LBEigenspaceWithSum):
         return int(round(rep_dim))
 
     def compute_lb_eigenvalue(self):
-        np_sgn = np.array(self.index)
+        sgn = np.array(self.index, dtype=np.float)
+        # transform the signature into the same basis as rho
+        sgn -= np.mean(sgn)
         rho = self.manifold.rho
-        return np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
+        return (np.linalg.norm(rho + sgn) ** 2 - np.linalg.norm(rho) ** 2) / (2 * self.manifold.n)
 
     def compute_basis_sum(self):
         return SUCharacterDenominatorFree(representation=self)
