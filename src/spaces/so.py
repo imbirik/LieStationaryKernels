@@ -154,7 +154,8 @@ class SOLBEigenspace(LBEigenspaceWithSum):
     def compute_lb_eigenvalue(self):
         np_sgn = np.array(self.index)
         rho = self.manifold.rho
-        lb_eigenvalue = np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2
+        # killing_form_coeff = 4 * self.manifold.rank - (4 if self.manifold.n % 2 == 0 else 2)
+        lb_eigenvalue = (np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2)  # / killing_form_coeff
         return lb_eigenvalue.item()
 
     def compute_basis_sum(self):

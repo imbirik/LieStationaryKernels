@@ -104,7 +104,8 @@ class SULBEigenspace(LBEigenspaceWithSum):
         # transform the signature into the same basis as rho
         sgn -= np.mean(sgn)
         rho = self.manifold.rho
-        return (np.linalg.norm(rho + sgn) ** 2 - np.linalg.norm(rho) ** 2) / (2 * self.manifold.n)
+        lb_eigenvalue = (np.linalg.norm(rho + sgn) ** 2 - np.linalg.norm(rho) ** 2)  # / (2 * self.manifold.n)
+        return lb_eigenvalue.item()
 
     def compute_basis_sum(self):
         return SUCharacterDenominatorFree(representation=self)
