@@ -21,7 +21,7 @@ class Sphere(AbstractManifold, Hypersphere):
     """
     S^{dim} sphere, in R^{dim+1}
     """
-    def __init__(self, n: int, order: int):
+    def __init__(self, n: int, order=10):
         """
         :param dim: sphere dimension
         :param order: the order of approximation, the umber of Laplace-Beltrami eigenspaces under consideration.
@@ -34,6 +34,9 @@ class Sphere(AbstractManifold, Hypersphere):
 
         self.fundamental_system = FundamentalSystemCache(self.n + 1)
         self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(0, self.order)]
+
+        self.id = torch.zeros((self.n+1,), device=device, dtype=dtype)
+        self.id[0] = 1.0
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -52,6 +55,9 @@ class Sphere(AbstractManifold, Hypersphere):
         x_flatten = torch.reshape(x_, (-1, self.n+1))
         y_flatten = torch.reshape(y_, (-1, self.n+1))
         return vmap(torch.dot)(x_flatten, y_flatten)
+
+    def pairwise_dist(self, x, y):
+        return torch.abs(torch.arccos(self.pairwise_embed(x, y))).reshape((x.shape[0], y.shape[0]))
 
 
 class SphereLBEigenspace(LBEigenspaceWithBasis):

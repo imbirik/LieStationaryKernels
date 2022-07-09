@@ -14,12 +14,13 @@ import json
 from pathlib import Path
 dtype = torch.cdouble
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+pi = 2*torch.acos(torch.zeros(1)).item()
 
 
 class SU(CompactLieGroup):
     """SU(dim), special unitary group of degree dim."""
 
-    def __init__(self, n: int, order: int):
+    def __init__(self, n: int, order=10):
         """
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
@@ -31,7 +32,7 @@ class SU(CompactLieGroup):
         self.Eigenspace = SULBEigenspace
 
         self.rho = np.arange(self.n - 1, -self.n, -2) * 0.5
-
+        self.id = torch.eye(self.n, device=device, dtype=dtype)
         super().__init__(order=order)
 
     def dist(self, x, y):
@@ -54,7 +55,7 @@ class SU(CompactLieGroup):
     def generate_signatures(self, order):
         """Generate the signatures of irreducible representations
 
-        Representations of SO(dim) can be enumerated by partitions of size dim, called signatures.
+        Representations of SU(dim) can be enumerated by partitions of size dim, called signatures.
         :param int order: number of eigenfunctions that will be returned
         :return signatures: signatures of representations likely having the smallest LB eigenvalues
         """
@@ -80,6 +81,15 @@ class SU(CompactLieGroup):
     def torus_embed(x):
         return torch.linalg.eigvals(x)
 
+    def pairwise_dist(self, x, y):
+        """For n points x_i and m points y_j computed dist(x_i,y_j)
+            TODO: CHECK
+        """
+        x_y_ = self.pairwise_embed(x, y)
+        log_x_y_ = torch.arccos(x_y_.real)
+        dist = math.sqrt(2)*torch.minimum(log_x_y_, 2*pi-log_x_y_)
+        dist = torch.norm(dist, dim=1).reshape(x.shape[0], y.shape[0])
+        return dist
 
 class SULBEigenspace(LBEigenspaceWithSum):
     """The Laplace-Beltrami eigenspace for the special unitary group."""

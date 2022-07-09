@@ -99,7 +99,7 @@ class RandomPhaseApproximation(torch.nn.Module):
 
     def _cov(self, x, y):
         x_embed, y_embed = self.make_embedding(x), self.make_embedding(y)
-        return (x_embed @ torch.conj(y_embed.T)).real
+        return (x_embed @ torch.conj(y_embed.T))
 
 
 class RandomFourierApproximation(torch.nn.Module):

@@ -1,7 +1,12 @@
 import gpytorch
 import torch
 from torch.optim.lr_scheduler import StepLR
-gpytorch.settings.cholesky_jitter(double=1e-6)
+from src.spaces import Grassmannian, OrientedGrassmannian, HyperbolicSpace, SO, \
+    SymmetricPositiveDefiniteMatrices, Sphere, Stiefel, SU
+dtype = torch.float64
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+gpytorch.settings.cholesky_jitter(double=1e-4)
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, kernel, manifold, point_shape=None):
@@ -16,8 +21,11 @@ class ExactGPModel(gpytorch.models.ExactGP):
         if self.point_shape is not None:
             data = x.view(*x.shape[:-1], *self.point_shape)
         else:
-            data = x
-        covar_x = self.covar_module(data)
+            if torch.is_complex(x):
+                data = torch.view_as_real(x).reshape(x.shape[0], -1)
+            else:
+                data = x
+        covar_x = self.covar_module(data) + 1e-6*torch.eye(x.shape[0], device=device, dtype=dtype)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
@@ -46,7 +54,7 @@ def train(model, train_x, train_y, training_iter=900, lr_scheduler_step=300, lr=
         loss.backward(retain_graph=True)
         optimizer.step()
         scheduler.step()
-        if i % lr_scheduler_step == lr_scheduler_step-1:
+        if i % 100 == 99:
             try:
                 lengthscale = model.covar_module.base_kernel.lengthscale.item()
                 variance = model.covar_module.outputscale

@@ -16,7 +16,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
     """Ball model for Hyperbolic space formulas are taken from
      https://www.ams.org/journals/proc/1994-121-02/S0002-9939-1994-1186137-8/S0002-9939-1994-1186137-8.pdf"""
 
-    def __init__(self, n: int, order: int):
+    def __init__(self, n: int, order=100):
         super(HyperbolicSpace, self).__init__()
         self.n = n
         self.dim = n
@@ -42,7 +42,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         self.lb_eigenspaces = HypShiftedNormailizedExp(lmd, shift, self)
 
     def to_group(self, x):
-        return x
+        return x.squeeze(dim=-1)
 
     def pairwise_diff(self, x, y):
         """for x of size n and y of size m computes dist(x_i-y_j) and represent as array [n*m,...]"""
@@ -70,7 +70,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from Hyperbolic space since Haar measure is infinite.
            We will sample from unit ball uniformly. """
         sphere = self.rand_phase(n)
-        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n)
+        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n)*0.95
         return sphere * r[:, None].clone()
 
     def inv(self, x):
@@ -82,6 +82,18 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         eucl_dist = torch.sqrt(torch.sum(torch.square(x), dim=1))
         exp_dist = (1+eucl_dist)/(1-eucl_dist)
         return torch.log(exp_dist)
+
+    def pairwise_dist(self, x, y):
+        diff = self.pairwise_diff(x, y)
+        self._dist_to_id(diff).reshape(x.shape[0], y.shape[0])
+        x_, y_ = cartesian_prod(x, y) # [n,m,d] and [n,m,d]
+        x_flatten = torch.reshape(x_, (-1, self.n))
+        y_flatten = torch.reshape(y_, (-1, self.n))
+        xy_l2 = torch.sum(torch.square(x_flatten-y_flatten), dim=1)
+        x_l2, y_l2 = torch.sum((torch.square(x_flatten)), dim=1), torch.sum((torch.square(y_flatten)), dim=1)
+        xy_dist = torch.arccosh(1 + 2 * xy_l2/(1-x_l2)/(1-y_l2))
+        return xy_dist.reshape(x.shape[0], y.shape[0])
+
 
 class HypShiftExp(torch.nn.Module):
     """We use explicit formula for exponents in terms of hyperbolic space,
@@ -129,7 +141,8 @@ class HypShiftedNormailizedExp(torch.nn.Module):
         return torch.squeeze(torch.exp(log_c/2))
 
     def forward(self, x):
-        # x has shape (n, dim, dim)
+        #x = x.squeeze()
+        # x has shape (n, dim,)
 
         exp = self.exp(x)  # (n, m)
         return torch.einsum('nm,m->nm', exp, self.coeff)  # (n, m)

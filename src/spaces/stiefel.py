@@ -31,7 +31,7 @@ class _SO:
 class Stiefel(HomogeneousSpace, Stiefel_):
     """Class for stiefel manifold represented as SO(n)/SO(m)"""
     """Elements represented as orthonormal frames"""
-    def __init__(self, n, m, order=10, average_order=1000):
+    def __init__(self, n, m, order=10, average_order=30):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m

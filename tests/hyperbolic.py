@@ -12,7 +12,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 5, 10**6
+        self.n, self.order = 5, 10**4
         self.space = HyperbolicSpace(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 5.0, 5.0 + self.space.dim
@@ -51,6 +51,10 @@ class TestHyperbolic(unittest.TestCase):
         # print(torch.max(torch.abs(cov1 - cov2)).item())
         self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2))
 
+    def test_dist(self):
+        dist1 = self.space._dist_to_id(self.x)
+        dist2 = self.space.pairwise_dist(self.x, self.space.id.view(-1, self.n)).squeeze()
+        self.assertTrue(torch.allclose(dist1, dist2))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

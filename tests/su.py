@@ -17,7 +17,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class TestSU(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 3, 8
+        self.n, self.order = 2, 8
         self.space = SU(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 2.0, 5.0

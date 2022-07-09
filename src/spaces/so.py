@@ -24,7 +24,7 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 class SO(CompactLieGroup):
     """SO(dim), special orthogonal group of degree dim."""
 
-    def __init__(self, n: int, order: int):
+    def __init__(self, n: int, order=10):
         """
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated

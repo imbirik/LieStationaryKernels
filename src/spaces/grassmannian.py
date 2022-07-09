@@ -61,7 +61,7 @@ class _S_O_O:
 class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
     """Class for oriented grassmannian manifold represented as SO(n)/SO(m)xSO(n-m)"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
-    def __init__(self, n, m, order=10, average_order=100):
+    def __init__(self, n, m, order=10, average_order=50):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m
@@ -106,7 +106,7 @@ class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
 class Grassmannian(HomogeneousSpace, Grassmannian_):
     """Class for grassmannian manifold represented as SO(n)/S(O(m)xO(n-m))"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
-    def __init__(self, n, m, order=10, average_order=1000):
+    def __init__(self, n, m, order=10, average_order=30):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m

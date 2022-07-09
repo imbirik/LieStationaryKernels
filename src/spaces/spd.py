@@ -3,6 +3,7 @@ import numpy as np
 from src.space import NonCompactSymmetricSpace, NonCompactSymmetricSpaceExp
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 from src.utils import GOE_sampler, triu_ind
+from src.utils import cartesian_prod
 from math import factorial
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -16,7 +17,7 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
     """Class of Positive definite matrices represented as symmetric space GL(n,R)/O(n,R)"""
 
-    def __init__(self, n: int, order: int):
+    def __init__(self, n: int, order=100):
         super(SymmetricPositiveDefiniteMatrices, self).__init__()
         self.n = n
         self.dim = n * (n+1)//2
@@ -73,6 +74,12 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         dist = torch.sum(sq_log_eig, dim=1)
         return dist
 
+    def pairwise_dist(self, x, y):
+        x_G, y_G_inv = self.to_group(x), self.inv(self.to_group(y))
+        x_, y_ = cartesian_prod(x_G, y_G_inv)
+        x_, y_ = x_.reshape(-1, self.n, self.n), y_.reshape(-1, self.n, self.n)
+        x_y_ = torch.bmm(x_, y_)
+        return self._dist_to_id(x_y_).reshape(x.shape[0], y.shape[0])
 
 class SPDShiftExp(NonCompactSymmetricSpaceExp):
         def __init__(self, lmd, shift, manifold):
