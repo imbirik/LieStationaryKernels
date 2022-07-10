@@ -1,10 +1,9 @@
 import torch
-from torch.distributions.distribution import Distribution
+
 # from pyro.distributions.torch_distribution import TorchDistribution
 # from torch.distributions.utils import broadcast_all
 # from torch.distributions import constraints
 # from pyro.distributions.rejector import Rejector
-from math import sqrt, factorial
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #device = 'cpu'
@@ -113,6 +112,63 @@ def hook_content_formula(lmd, n):
             denom *= l_cols[id_col] + l_row-id_row - id_col - 1
 
     return numer/denom
+
+
+def partition_dominance_cone(partition):
+    '''
+    Calculates partitions dominated by a given one
+    and having the same number of parts (including zero parts of the original)
+    '''
+    cone = {partition}
+    new_partitions = {0}
+    prev_partitions = cone
+    while new_partitions:
+        new_partitions = set()
+        for partition in prev_partitions:
+            for i in range(len(partition) - 1):
+                if partition[i] > partition[i + 1]:
+                    for j in range(i + 1, len(partition)):
+                        if partition[i] > partition[j] + 1 and partition[j] < partition[j - 1]:
+                            new_partition = list(partition)
+                            new_partition[i] -= 1
+                            new_partition[j] += 1
+                            new_partition = tuple(new_partition)
+                            if new_partition not in cone:
+                                new_partitions.add(new_partition)
+        cone.update(new_partitions)
+        prev_partitions = new_partitions
+    return cone
+
+
+def partition_dominance_or_subpartition_cone(partition):
+    '''
+        Calculates subpartitions and partitions dominated by a given one
+        and having the same number of parts (including zero parts of the original)
+        '''
+    cone = {partition}
+    new_partitions = {0}
+    prev_partitions = cone
+    while new_partitions:
+        new_partitions = set()
+        for partition in prev_partitions:
+            for i in range(len(partition) - 1):
+                if partition[i] > partition[i + 1]:
+                    new_partition = list(partition)
+                    new_partition[i] -= 1
+                    new_partition = tuple(new_partition)
+                    if new_partition not in cone:
+                        new_partitions.add(new_partition)
+                    for j in range(i + 1, len(partition)):
+                        if partition[i] > partition[j] + 1 and partition[j] < partition[j - 1]:
+                            new_partition = list(partition)
+                            new_partition[i] -= 1
+                            new_partition[j] += 1
+                            new_partition = tuple(new_partition)
+                            if new_partition not in cone:
+                                new_partitions.add(new_partition)
+        cone.update(new_partitions)
+        prev_partitions = new_partitions
+    return cone
 
 
 def lazy_property(fn):

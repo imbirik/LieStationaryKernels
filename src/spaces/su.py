@@ -7,7 +7,8 @@ from functools import reduce
 import operator
 import math
 import itertools
-from src.utils import vander_det, vander_det2, poly_eval_tensor
+import more_itertools
+from src.utils import vander_det, vander_det2, poly_eval_tensor, fixed_length_partitions, partition_dominance_cone
 from scipy.special import chebyu
 import sympy
 import json
@@ -154,8 +155,17 @@ class SUCharacterDenominatorFree(LieGroupCharacter):
         gammas = sympy.symbols(' '.join('g{}'.format(i) for i in range(1, n + 1)))
         qs = [pk + n - k - 1 for k, pk in enumerate(self.representation.index)]
         numer_mat = sympy.Matrix(n, n, lambda i, j: gammas[i]**qs[j])
-        vander = sympy.prod(gammas[i] - gammas[j] for i, j in itertools.combinations(range(n), r=2))
-        p = sympy.Poly(sympy.exquo(sympy.det(numer_mat), vander), gammas)
+        numer = sympy.Poly(sympy.det(numer_mat))
+        denom = sympy.Poly(sympy.prod(gammas[i] - gammas[j] for i, j in itertools.combinations(range(n), r=2)))
+        monomials_tuples = list(itertools.chain.from_iterable(
+            more_itertools.distinct_permutations(p) for p in partition_dominance_cone(self.representation.index)
+        ))
+        monomials = [sympy.polys.monomials.Monomial(m, gammas).as_expr() for m in monomials_tuples]
+        chi_coeffs = list(more_itertools.always_iterable(sympy.symbols(' '.join('c{}'.format(i) for i in range(1, len(monomials) + 1)))))
+        chi_poly = sympy.Poly(sum(c * m for c, m in zip(chi_coeffs, monomials)), gammas)
+        pr = chi_poly * denom - numer
+        sol = list(sympy.linsolve(pr.coeffs(), chi_coeffs)).pop()
+        p = sympy.Poly(sum(c * m for c, m in zip(sol, monomials)), gammas)
         coeffs = list(map(int, p.coeffs()))
         monoms = [list(map(int, monom)) for monom in p.monoms()]
         return coeffs, monoms

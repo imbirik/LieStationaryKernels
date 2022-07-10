@@ -33,10 +33,10 @@ class CompactJSONEncoder(json.JSONEncoder):
         elif isinstance(o, dict):
             if o:
                 if self._put_on_single_line(o):
-                    return "{ " + ", ".join(f"{self.encode(k)}: {self.encode(el)}" for k, el in o.items()) + " }"
+                    return "{ " + ", ".join(f"{self.encode(k)}: {self.encode(el)}" for k, el in sorted(o.items())) + " }"
                 else:
                     self.indentation_level += 1
-                    output = [self.indent_str + f"{json.dumps(k)}: {self.encode(v)}" for k, v in o.items()]
+                    output = [self.indent_str + f"{json.dumps(k)}: {self.encode(v)}" for k, v in sorted(o.items())]
                     self.indentation_level -= 1
                     return "{\n" + ",\n".join(output) + "\n" + self.indent_str + "}"
             else:
@@ -47,7 +47,7 @@ class CompactJSONEncoder(json.JSONEncoder):
             o = o.replace("\n", "\\n")
             return f'"{o}"'
         else:
-            return json.dumps(o)
+            return json.dumps(o, sort_keys=True)
 
     def iterencode(self, o, **kwargs):
         """Required to also work with `json.dump`."""
@@ -74,6 +74,7 @@ class CompactJSONEncoder(json.JSONEncoder):
 
 # set to True to recalculate all characters, set to False to add to the already existing without recalculating
 recalculate = False
+
 storage_file_name = 'precomputed_characters.json'
 
 groups = [
@@ -81,11 +82,15 @@ groups = [
     (SO, 4, SOCharacterDenominatorFree),
     (SO, 5, SOCharacterDenominatorFree),
     (SO, 6, SOCharacterDenominatorFree),
+    (SO, 7, SOCharacterDenominatorFree),
+    (SO, 8, SOCharacterDenominatorFree),
     (SU, 2, SUCharacterDenominatorFree),
     (SU, 3, SUCharacterDenominatorFree),
     (SU, 4, SUCharacterDenominatorFree),
     (SU, 5, SUCharacterDenominatorFree),
+    (SU, 6, SUCharacterDenominatorFree),
 ]
+
 # the number of representations to be calculated for each group
 order = 10
 
@@ -102,10 +107,13 @@ for group_type, dim, character_class in groups:
         characters[group_name] = {}
     for irrep in group.lb_eigenspaces:
         if str(irrep.index) not in characters[group_name]:
+            # print(irrep.index)
             character = character_class(representation=irrep, precomputed=False)
             coeffs, monoms = character._compute_character_formula()
             print(irrep.index, coeffs, monoms)
+            # print()
             characters[group_name][str(irrep.index)] = (coeffs, monoms)
 
 with open(storage_file_name, 'w') as file:
-    json.dump(characters, file, sort_keys=True, cls=CompactJSONEncoder)
+    json.dump(characters, file, cls=CompactJSONEncoder)
+# print(json.dumps(characters, sort_keys=True, cls=CompactJSONEncoder))
