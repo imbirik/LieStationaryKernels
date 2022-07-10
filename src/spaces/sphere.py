@@ -92,6 +92,7 @@ class NormalizedSphericalFunctions(torch.nn.Module):
                      np.exp((np.log(np.pi) * (dimension + 1) / 2 - loggamma((dimension + 1) / 2)) / 2)
 
     def forward(self, x):
+        # this is truly barbaric, but until https://github.com/vdutor/SphericalHarmonics/issues/9 is resolved...
         return self.spherical_functions(x.cpu()).to(device)
 
 
