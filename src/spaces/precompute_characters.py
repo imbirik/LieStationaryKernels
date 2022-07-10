@@ -1,6 +1,8 @@
 import json
 from typing import Union
 
+import sys
+
 from so import SO, SOCharacterDenominatorFree
 from su import SU, SUCharacterDenominatorFree
 
@@ -92,7 +94,7 @@ groups = [
 ]
 
 # the number of representations to be calculated for each group
-order = 10
+order = 20
 
 characters = {}
 if not recalculate:
@@ -107,13 +109,12 @@ for group_type, dim, character_class in groups:
         characters[group_name] = {}
     for irrep in group.lb_eigenspaces:
         if str(irrep.index) not in characters[group_name]:
-            # print(irrep.index)
+            sys.stdout.write('{}: '.format(irrep.index))
             character = character_class(representation=irrep, precomputed=False)
             coeffs, monoms = character._compute_character_formula()
-            print(irrep.index, coeffs, monoms)
-            # print()
+            print(coeffs, monoms)
             characters[group_name][str(irrep.index)] = (coeffs, monoms)
 
 with open(storage_file_name, 'w') as file:
     json.dump(characters, file, cls=CompactJSONEncoder)
-# print(json.dumps(characters, sort_keys=True, cls=CompactJSONEncoder))
+# print(json.dumps(characters, cls=CompactJSONEncoder))

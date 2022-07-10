@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
@@ -9,6 +8,7 @@ import math
 import itertools
 import more_itertools
 import sympy
+from sympy.matrices.determinant import _det as sp_det
 import json
 from pathlib import Path
 #from functorch import vmap
@@ -221,19 +221,19 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
         rank = self.representation.manifold.rank
         signature = self.representation.index
         gammas = sympy.symbols(' '.join('g{}'.format(i + 1) for i in range(rank)))
-        gammas = tuple(more_itertools.always_iterable(gammas))
+        gammas = list(more_itertools.always_iterable(gammas))
         gammas_conj = sympy.symbols(' '.join('gc{}'.format(i + 1) for i in range(rank)))
-        gammas_conj = tuple(more_itertools.always_iterable(gammas_conj))
+        gammas_conj = list(more_itertools.always_iterable(gammas_conj))
         chi_variables = gammas + gammas_conj
         if n % 2:
             gammas_sqrt = sympy.symbols(' '.join('gr{}'.format(i + 1) for i in range(rank)))
-            gammas_sqrt = tuple(more_itertools.always_iterable(gammas_sqrt))
+            gammas_sqrt = list(more_itertools.always_iterable(gammas_sqrt))
             gammas_conj_sqrt = sympy.symbols(' '.join('gcr{}'.format(i + 1) for i in range(rank)))
-            gammas_conj_sqrt = tuple(more_itertools.always_iterable(gammas_conj_sqrt))
+            gammas_conj_sqrt = list(more_itertools.always_iterable(gammas_conj_sqrt))
             chi_variables = gammas_sqrt + gammas_conj_sqrt
             def xi1(qs):
                 mat = sympy.Matrix(rank, rank, lambda i, j: gammas_sqrt[i]**qs[j]-gammas_conj_sqrt[i]**qs[j])
-                return sympy.det(mat)
+                return sympy.Poly(sp_det(mat, method='berkowitz'), chi_variables)
             # qs = [sympy.Integer(2*pk + 2*rank - 2*k - 1) / 2 for k, pk in enumerate(signature)]
             qs = [2 * pk + 2 * rank - 2 * k - 1 for k, pk in enumerate(signature)]
             # denom_pows = [sympy.Integer(2*k - 1) / 2 for k in range(rank, 0, -1)]
@@ -243,10 +243,10 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
         else:
             def xi0(qs):
                 mat = sympy.Matrix(rank, rank, lambda i, j: gammas[i] ** qs[j] + gammas_conj[i] ** qs[j])
-                return sympy.det(mat)
+                return sympy.Poly(sp_det(mat, method='berkowitz'), chi_variables)
             def xi1(qs):
                 mat = sympy.Matrix(rank, rank, lambda i, j: gammas[i] ** qs[j] - gammas_conj[i] ** qs[j])
-                return sympy.det(mat)
+                return sympy.Poly(sp_det(mat, method='berkowitz'), chi_variables)
             qs = [pk + rank - k - 1 if k != rank - 1 else abs(pk) for k, pk in enumerate(signature)]
             pm = signature[-1]
             numer = xi0(qs)
@@ -254,9 +254,11 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
                 numer += (1 if pm > 0 else -1) * xi1(qs)
             denom = xi0(list(reversed(range(rank))))
         partition = tuple(map(abs, self.representation.index)) + tuple([0] * self.representation.manifold.rank)
-        monomials_tuples = list(itertools.chain.from_iterable(
+        monomials_tuples = itertools.chain.from_iterable(
             more_itertools.distinct_permutations(p) for p in partition_dominance_or_subpartition_cone(partition)
-        ))
+        )
+        monomials_tuples = filter(lambda p: all(p[i] == 0 or p[i + rank] == 0 for i in range(rank)), monomials_tuples)
+        monomials_tuples = list(monomials_tuples)
         monomials = [sympy.polys.monomials.Monomial(m, chi_variables).as_expr()
                      for m in monomials_tuples]
         chi_coeffs = list(more_itertools.always_iterable(
@@ -270,11 +272,8 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
             pr = sympy.Poly(pr.subs((g*gc, 1) for g, gc in zip(gammas, gammas_conj)), chi_variables)
         sol = list(sympy.linsolve(pr.coeffs(), chi_coeffs)).pop()
         if n % 2:
-            chi_poly = chi_poly.subs((g * gc, 1) for g, gc in zip(gammas_sqrt, gammas_conj_sqrt))
             chi_variables = gammas + gammas_conj
             chi_poly = sympy.Poly(chi_poly.subs([gr ** 2, g] for gr, g in zip(gammas_sqrt + gammas_conj_sqrt, chi_variables)), chi_variables)
-        else:
-            chi_poly = sympy.Poly(chi_poly.subs((g*gc, 1) for g, gc in zip(gammas, gammas_conj)), chi_variables)
         p = sympy.Poly(chi_poly.subs((c, c_val) for c, c_val in zip(chi_coeffs, sol)), chi_variables)
         coeffs = list(map(int, p.coeffs()))
         monoms = [list(map(int, monom)) for monom in p.monoms()]

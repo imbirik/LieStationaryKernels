@@ -11,6 +11,7 @@ import more_itertools
 from src.utils import vander_det, vander_det2, poly_eval_tensor, fixed_length_partitions, partition_dominance_cone
 from scipy.special import chebyu
 import sympy
+from sympy.matrices.determinant import _det as sp_det
 import json
 from pathlib import Path
 dtype = torch.cdouble
@@ -155,7 +156,7 @@ class SUCharacterDenominatorFree(LieGroupCharacter):
         gammas = sympy.symbols(' '.join('g{}'.format(i) for i in range(1, n + 1)))
         qs = [pk + n - k - 1 for k, pk in enumerate(self.representation.index)]
         numer_mat = sympy.Matrix(n, n, lambda i, j: gammas[i]**qs[j])
-        numer = sympy.Poly(sympy.det(numer_mat))
+        numer = sympy.Poly(sp_det(numer_mat, method='berkowitz'))
         denom = sympy.Poly(sympy.prod(gammas[i] - gammas[j] for i, j in itertools.combinations(range(n), r=2)))
         monomials_tuples = list(itertools.chain.from_iterable(
             more_itertools.distinct_permutations(p) for p in partition_dominance_cone(self.representation.index)
