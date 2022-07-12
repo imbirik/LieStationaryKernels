@@ -16,30 +16,42 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
     """Ball model for Hyperbolic space formulas are taken from
      https://www.ams.org/journals/proc/1994-121-02/S0002-9939-1994-1186137-8/S0002-9939-1994-1186137-8.pdf"""
 
-    def __init__(self, n: int, order=100):
+    def __init__(self, n: int, order=10000):
         super(HyperbolicSpace, self).__init__()
         self.n = n
         self.dim = n
         self.order = order
         self.id = torch.zeros(self.n, device=device, dtype=dtype).view(1, self.n)
-
+        self.normalized_lmd = None
         #self.lb_eigenspaces = None
 
-    def generate_lb_eigenspaces(self, measure):
-        shift = self.rand_phase(self.order)
+    def _generate_lb_eigenspace(self, measure):
         if isinstance(measure, MaternSpectralMeasure):
-            nu, lengthscale = measure.nu[0], measure.lengthscale[0]
-            scale = 1.0/torch.sqrt(nu/(nu-1)) * torch.sqrt(1/4 + 2 * nu / lengthscale)
-            student_samples = torch.distributions.StudentT(df=measure.nu-1, scale=scale).rsample((self.order,))
+            student_samples = torch.distributions.StudentT(df=measure.nu - 1, scale=1).rsample((self.order,))
             lmd = torch.abs(student_samples)
         elif isinstance(measure, SqExpSpectralMeasure):
-            scale = 1.0/measure.lengthscale[0]
-            normal_samples = torch.distributions.Normal(0, torch.abs(scale)).rsample((self.order,))
+            normal_samples = torch.distributions.Normal(torch.tensor(0, dtype=dtype, device=device),
+                                                        torch.tensor(1, dtype=dtype, device=device))\
+                .rsample((self.order,)).type(dtype)
             lmd = torch.abs(normal_samples)
         else:
             return NotImplementedError
         lmd = torch.squeeze(lmd)
-        self.lb_eigenspaces = HypShiftedNormailizedExp(lmd, shift, self)
+        self.normalized_lmd = lmd
+        self.shift = self.rand_phase(self.order)
+
+    def generate_lb_eigenspaces(self, measure):
+        if self.normalized_lmd is None:
+            self._generate_lb_eigenspace(measure)
+        if isinstance(measure, MaternSpectralMeasure):
+            nu, lengthscale = measure.nu[0], measure.lengthscale[0]
+            scale = 1.0/torch.sqrt(nu/(nu-1)) * torch.sqrt(1/4 + 2 * nu / lengthscale)
+        elif isinstance(measure, SqExpSpectralMeasure):
+            scale = 1.0/torch.abs(measure.lengthscale[0])
+        else:
+            return NotImplementedError
+        lmd = self.normalized_lmd * scale
+        self.lb_eigenspaces = HypShiftedNormailizedExp(lmd, self.shift, self)
 
     def to_group(self, x):
         return x.squeeze(dim=-1)

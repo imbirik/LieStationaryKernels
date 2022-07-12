@@ -164,7 +164,7 @@ class RandomFourierFeatureKernel(AbstractSpectralKernel):
     def __init__(self, measure, manifold):
         super().__init__(measure, manifold)
         manifold.generate_lb_eigenspaces(measure)  # Generate lb_eigenvalues with respect to spectral measure
-        point = self.manifold.rand()
+        point = self.manifold.id
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def compute_normalizer(self):
