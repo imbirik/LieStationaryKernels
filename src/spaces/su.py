@@ -60,7 +60,7 @@ class SU(CompactLieGroup):
         :param int order: number of eigenfunctions that will be returned
         :return signatures: signatures of representations likely having the smallest LB eigenvalues
         """
-        sign_vals_lim = order if self.n == 1 else 10 if self.n == 2 else 5
+        sign_vals_lim = 100 if self.n in (1, 2) else 30 if self.n == 3 else 10
         signatures = list(itertools.combinations_with_replacement(range(sign_vals_lim, -1, -1), r=self.rank))
         signatures = [sgn + (0,) for sgn in signatures]
         signatures.sort()

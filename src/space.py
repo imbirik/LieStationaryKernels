@@ -1,8 +1,10 @@
 import torch
 from abc import ABC, abstractmethod
-import heapq
 from src.utils import lazy_property
 from src.utils import cartesian_prod
+import math
+import operator
+import warnings
 
 j = torch.tensor([1j]).item()  # imaginary unit
 pi = 2*torch.acos(torch.zeros(1)).item()
@@ -31,8 +33,13 @@ class CompactLieGroup(AbstractManifold, ABC):
         """
         super().__init__()
         if order:
-            lb_eigenspaces = [self.Eigenspace(signature, manifold=self) for signature in self.generate_signatures(order)]
-            self.lb_eigenspaces = heapq.nsmallest(order, lb_eigenspaces, key=lambda eig: eig.lb_eigenvalue)
+            signatures = self.generate_signatures(order)
+            lb_eigenspaces = [self.Eigenspace(signature, manifold=self) for signature in signatures]
+            lb_eigenspaces.sort(key=operator.attrgetter('lb_eigenvalue'))
+            self.lb_eigenspaces = lb_eigenspaces[:order]
+            error_est = sum(math.exp(-irrep.lb_eigenvalue) * irrep.dimension**2 for irrep in lb_eigenspaces[order:])
+            if error_est > 1e-3:
+                warnings.warn('Heat kernel error est. {}, consider larger order of approximation.'.format(error_est), stacklevel=2)
         else:
             self.lb_eigenspaces = []
 

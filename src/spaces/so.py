@@ -78,9 +78,9 @@ class SO(CompactLieGroup):
         """
         signatures = []
         if self.n == 3:
-            signature_sum = order
+            signature_sum = 200
         else:
-            signature_sum = 20
+            signature_sum = 30
         for signature_sum in range(0, signature_sum):
             for i in range(0, self.rank + 1):
                 for signature in fixed_length_partitions(signature_sum, i):
