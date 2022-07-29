@@ -1,12 +1,7 @@
 import torch
 
-# from pyro.distributions.torch_distribution import TorchDistribution
-# from torch.distributions.utils import broadcast_all
-# from torch.distributions import constraints
-# from pyro.distributions.rejector import Rejector
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#device = 'cpu'
 
 
 def GOE_sampler(num_samples, n):

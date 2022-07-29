@@ -1,11 +1,9 @@
 import torch
-#import functorch
 from torch.nn import Parameter
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dtype = torch.float64
-from gpytorch.constraints import Positive
-#device = 'cpu'
+
 
 class AbstractSpectralMeasure(torch.nn.Module):
     def __init__(self, dim):

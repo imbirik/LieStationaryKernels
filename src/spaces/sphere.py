@@ -2,12 +2,9 @@ import torch
 import numpy as np
 from scipy.special import loggamma
 
-from  src.utils import cartesian_prod
-from src.space import AbstractManifold, LBEigenspaceWithSum, LBEigenspaceWithBasis
+from src.utils import cartesian_prod
+from src.space import AbstractManifold, LBEigenspaceWithBasis
 from geomstats.geometry.hypersphere import Hypersphere
-import spherical_harmonics.torch
-#from functorch import vmap
-#from torch import vmap
 from torch.autograd.functional import _vmap as vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel
 from spherical_harmonics.fundamental_set import FundamentalSystemCache

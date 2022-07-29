@@ -1,54 +1,49 @@
 import torch
-import numpy as np
-from src.spaces.so import SO, SOLBEigenspace
-from src.spaces.stiefel import _SO
+from src.spaces.so import SO
 from src.space import HomogeneousSpace
 from geomstats.geometry.grassmannian import Grassmannian as Grassmannian_
-from src.utils import hook_content_formula
-import warnings
-#from functorch import vmap
-from torch.autograd.functional import _vmap as vmap
-from src.space import LBEigenspaceWithSum, LieGroupCharacter, AveragedLieGroupCharacter
 from src.utils import cartesian_prod
+
+
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class _SO_SO:
-    """Helper class for sampling"""
+class _SOxSO:
+    """Helper class for sampling, represents SO(n) x SO(m)"""
     def __init__(self, n, m):
         self.n, self.m = n, m
-        self.SOn = _SO(n)
-        self.SOm = _SO(m)
+        self.so_n = SO(n, order=0)
+        self.so_m = SO(m, order=0)
         self.dim = n*(n-1)//2 + m*(m-1)//2
 
     def rand(self, n=1):
-        h_u = self.SOn.rand(n)
-        h_d = self.SOm.rand(n)
+        h_u = self.so_n.rand(n)
+        h_d = self.so_m.rand(n)
         zeros = torch.zeros((n, self.n, self.m), device=device, dtype=dtype)
-        zerosT = torch.transpose(zeros, dim0=-1, dim1=-2)
-        l, r = torch.cat((h_u, zerosT), dim=1), torch.cat((zeros, h_d), dim=-2)
+        zeros_t = torch.transpose(zeros, dim0=-1, dim1=-2)
+        l, r = torch.cat((h_u, zeros_t), dim=1), torch.cat((zeros, h_d), dim=-2)
         res = torch.cat((l, r), dim=-1)
         return res
 
-class _S_O_O:
-    """Helper class for sampling"""
+class _S_OxO:
+    """Helper class for sampling, represents S( O(n) x O(m) )"""
     def __init__(self, n, m):
         self.n, self.m = n, m
-        self.SOn = _SO(n)
-        self.SOm = _SO(m)
+        self.so_n = SO(n, order=0)
+        self.so_m = SO(m, order=0)
         self.dim = n*(n-1)//2 + m*(m-1)//2 -1
 
     def block_diag(self, h_u, h_d):
         zeros = torch.zeros((h_u.shape[0], self.n, self.m), device=device, dtype=dtype)
-        zerosT = torch.transpose(zeros, dim0=-1, dim1=-2)
-        l, r = torch.cat((h_u, zerosT), dim=1), torch.cat((zeros, h_d), dim=-2)
+        zeros_t = torch.transpose(zeros, dim0=-1, dim1=-2)
+        l, r = torch.cat((h_u, zeros_t), dim=1), torch.cat((zeros, h_d), dim=-2)
         concatenated = torch.cat((l, r), dim=-1)
         return concatenated
 
     def rand(self, n=1):
         assert n % 2 == 0, "number of samples must be even."
-        h_u = self.SOn.rand(n//2)
-        h_d = self.SOm.rand(n//2)
+        h_u = self.so_n.rand(n // 2)
+        h_d = self.so_m.rand(n // 2)
         res_1 = self.block_diag(h_u, h_d).clone()
 
         h_u[:, :, -1] = h_u[:, :, -1] * -1
@@ -59,15 +54,15 @@ class _S_O_O:
         return res
 
 class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
-    """Class for oriented grassmannian manifold represented as SO(n)/SO(m)xSO(n-m)"""
+    """Class for oriented Grassmannian manifold represented as SO(n)/SO(m)xSO(n-m)"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
     def __init__(self, n, m, order=10, average_order=50):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m
-        G = SO(n, order=order)
-        H = _SO_SO(self.m, self.n_m)
-        HomogeneousSpace.__init__(self, G=G, H=H, average_order=average_order)
+        g = SO(n, order=order)
+        h = _SOxSO(self.m, self.n_m)
+        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
 
@@ -104,15 +99,15 @@ class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
 
 
 class Grassmannian(HomogeneousSpace, Grassmannian_):
-    """Class for grassmannian manifold represented as SO(n)/S(O(m)xO(n-m))"""
+    """Class for Grassmannian manifold represented as SO(n)/S(O(m)xO(n-m))"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
     def __init__(self, n, m, order=10, average_order=30):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m
-        G = SO(n, order=order)
-        H = _S_O_O(self.m, self.n_m)
-        HomogeneousSpace.__init__(self, G=G, H=H, average_order=average_order)
+        g = SO(n, order=order)
+        h = _S_OxO(self.m, self.n_m)
+        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
 

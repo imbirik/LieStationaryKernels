@@ -1,6 +1,4 @@
 import torch
-#from functorch import vmap
-from torch.autograd.functional import _vmap as vmap
 import numpy as np
 from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
 from functools import reduce
@@ -14,6 +12,7 @@ import sympy
 from sympy.matrices.determinant import _det as sp_det
 import json
 from pathlib import Path
+
 dtype = torch.cdouble
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 pi = 2*torch.acos(torch.zeros(1)).item()
@@ -80,7 +79,7 @@ class SU(CompactLieGroup):
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
     @staticmethod
-    def torus_embed(x):
+    def torus_representative(x):
         return torch.linalg.eigvals(x)
 
     def pairwise_dist(self, x, y):
@@ -112,7 +111,7 @@ class SULBEigenspace(LBEigenspaceWithSum):
         return int(round(rep_dim))
 
     def compute_lb_eigenvalue(self):
-        sgn = np.array(self.index, dtype=np.float)
+        sgn = np.array(self.index, dtype=float)
         # transform the signature into the same basis as rho
         sgn -= np.mean(sgn)
         rho = self.manifold.rho

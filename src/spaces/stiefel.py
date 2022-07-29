@@ -1,13 +1,9 @@
 import torch
-import numpy as np
-from src.spaces.so import SO, SOLBEigenspace
+from src.spaces.so import SO
 from src.space import HomogeneousSpace
 from geomstats.geometry.stiefel import Stiefel as Stiefel_
 from src.utils import hook_content_formula
-import warnings
-#from functorch import vmap
-from torch.autograd.functional import _vmap as vmap
-from src.space import LBEigenspaceWithSum, LieGroupCharacter, AveragedLieGroupCharacter
+
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -29,15 +25,15 @@ class _SO:
 
 
 class Stiefel(HomogeneousSpace, Stiefel_):
-    """Class for stiefel manifold represented as SO(n)/SO(m)"""
+    """Class for Stiefel manifold represented as SO(n)/SO(m)"""
     """Elements represented as orthonormal frames"""
     def __init__(self, n, m, order=10, average_order=30):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
         self.n_m = n - m
-        G = SO(n, order=order)
-        H = _SO(self.n_m)
-        HomogeneousSpace.__init__(self, G=G, H=H, average_order=average_order)
+        g = SO(self.n, order=order)
+        h = SO(self.n_m, order=0)
+        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Stiefel_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
 
@@ -81,7 +77,7 @@ class Stiefel(HomogeneousSpace, Stiefel_):
 
     def compute_inv_dimension(self, signature):
         m_ = min(self.m, self.n_m)
-        if m_ < self.G.rank and signature[m_] > 0:
+        if m_ < self.g.rank and signature[m_] > 0:
                 return 0
         signature_abs = tuple(abs(x) for x in signature)
         inv_dimension = hook_content_formula(signature_abs, m_)

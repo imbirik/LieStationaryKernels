@@ -1,17 +1,15 @@
 import unittest
-import torch
-#from functorch import vmap
-from torch.autograd.functional import _vmap as vmap
-import numpy as np
 from parameterized import parameterized_class
+import torch
+import numpy as np
 from src.spaces.grassmannian import Grassmannian, OrientedGrassmannian
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
-from src.utils import cartesian_prod
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 # @parameterized_class([
 #     {'space': Grassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
@@ -28,7 +26,7 @@ class TestGrassmanian(unittest.TestCase):
 
     def setUp(self) -> None:
         self.n, self.m = 3, 1
-        self.order, self.average_order = 10, 20**2
+        self.order, self.average_order = 10, 2 * 10**6
         self.space = Grassmannian(self.n, self.m, self.order)
         #self.space = Grassmannian(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
@@ -79,7 +77,7 @@ class TestGrassmanian(unittest.TestCase):
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
             cov2 = (embed_x @ torch.conj(embed_y.T))/dim_sq_f
             self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2, rtol=5e-2))
-            print('passed')
+            # print('passed')
 
 
 if __name__ == '__main__':

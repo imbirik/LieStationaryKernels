@@ -11,25 +11,11 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 class AbstractManifold(ABC):
     """Abstract base class for Compact Lie Group, Compact Homogeneous space or Symmetric Space"""
     def __init__(self):
-
         ABC.__init__(self)
-
-        # self.dim = None
-        # self.order = None
-
-    # @abstractmethod
-    # def dist(self, x, y):
-        # compute distance between x and y
-        # raise NotImplementedError
-
-    # @abstractmethod
-    # def difference(self, x, y):
-    #     # Using group structure computes xy^{-1}
-    #     pass
 
     @abstractmethod
     def rand(self, n=1):
-        # returns random element with respect to haar measure
+        # returns random element with respect to some fixed measure
         raise NotImplementedError
 
     def pairwise_diff(self, x, y):
@@ -44,8 +30,11 @@ class CompactLieGroup(AbstractManifold, ABC):
         :param order: the order of approximation, the number of representations calculated
         """
         super().__init__()
-        lb_eigenspaces = [self.Eigenspace(signature, manifold=self) for signature in self.generate_signatures(order)]
-        self.lb_eigenspaces = heapq.nsmallest(order, lb_eigenspaces, key=lambda eig: eig.lb_eigenvalue)
+        if order:
+            lb_eigenspaces = [self.Eigenspace(signature, manifold=self) for signature in self.generate_signatures(order)]
+            self.lb_eigenspaces = heapq.nsmallest(order, lb_eigenspaces, key=lambda eig: eig.lb_eigenvalue)
+        else:
+            self.lb_eigenspaces = []
 
     @abstractmethod
     def generate_signatures(self, order) -> list:
@@ -58,8 +47,9 @@ class CompactLieGroup(AbstractManifold, ABC):
         """Calculates the group inverse of a batch of group elements"""
         raise NotImplementedError
 
-    def torus_embed(self, x):
-        """Return corresponding element of maximal torus"""
+    @abstractmethod
+    def torus_representative(self, x):
+        """Return the corresponding element of the standard maximal torus"""
         raise NotImplementedError
 
     def pairwise_diff(self, x, y, reverse=False):
@@ -81,66 +71,73 @@ class CompactLieGroup(AbstractManifold, ABC):
         return x_y_
 
     def pairwise_embed(self, x, y):
-        """for x of size n and y of size n computes embedding corresponding for pair x_i and y_j
-         and represent as array [n*m,...]"""
+        """for x of size n and y of size n computes the torus representatives corresponding to all pairs x_i and y_j
+         as an array [n*m,...]"""
         x_y_ = self.pairwise_diff(x, y)
-        x_y_gammas = self.torus_embed(x_y_)
+        x_y_gammas = self.torus_representative(x_y_)
         return x_y_gammas
 
 
 class HomogeneousSpace(AbstractManifold, ABC):
     """Homogeneous space of form M=G/H"""
-    def __init__(self, G:CompactLieGroup, H, average_order):
+    def __init__(self, g: CompactLieGroup, h, average_order):
+        # H is not typed to CompactLieGroup because it is often given as an incomplete realization
         AbstractManifold.__init__(self)
-        self.G, self.H = G, H
-        self.dim = self.G.dim - self.H.dim
-        self.order, self.average_order = self.G.order, average_order
+        self.g, self.h = g, h
+        self.dim = self.g.dim - self.h.dim
+        self.order, self.average_order = self.g.order, average_order
 
         self.h_samples = self.sample_H(self.average_order)
 
         self.lb_eigenspaces = [AveragedLBEigenspace(representation, self) for
-                               representation in self.G.lb_eigenspaces]
+                               representation in self.g.lb_eigenspaces]
 
+    @abstractmethod
     def H_to_G(self, h):
-        pass
+        """Implements inclusion H<G"""
+        raise NotImplementedError
 
+    @abstractmethod
     def M_to_G(self, x):
-        pass
+        """Implements lifting M->G"""
+        raise NotImplementedError
 
+    @abstractmethod
     def G_to_M(self, g):
-        pass
+        """Implements a canonical projection G->M"""
+        raise NotImplementedError
 
     def sample_H(self, n):
-        raw_samples = self.H.rand(n)
+        raw_samples = self.h.rand(n)
         return self.H_to_G(raw_samples)
 
     def rand(self, n=1):
-        raw_samples = self.G.rand(n)
+        raw_samples = self.g.rand(n)
         return self.G_to_M(raw_samples)
 
     def pairwise_diff(self, x, y):
         """For arrays of form x_iH, y_jH computes difference Hx_i^{-1}y_jH """
         x_, y_ = self.M_to_G(x), self.M_to_G(y)
-        diff = self.G.pairwise_diff(x_, y_, reverse=True)
+        diff = self.g.pairwise_diff(x_, y_, reverse=True)
         return diff
 
     def pairwise_embed(self, x, y):
         """For arrays of form x_iH, y_jH computes embedding corresponding to x_i, y_j
         i.e. flattened array of form G.embed(x_i^{-1}y_jh_k)"""
         x_y_ = self.pairwise_diff(x, y)
-        return self.G.pairwise_embed(x_y_, self.h_samples)
+        return self.g.pairwise_embed(x_y_, self.h_samples)
 
     @abstractmethod
     def dist(self, x, y):
         raise NotImplementedError
 
+    @abstractmethod
     def compute_inv_dimension(self, signature):
         raise NotImplementedError
 
 
 class LBEigenfunction(ABC):
     """Laplace-Beltrami eigenfunction abstract base class"""
-
     def __init__(self, index, *, manifold: AbstractManifold):
         """
         :param index: the index of an LB eigenspace
@@ -150,6 +147,7 @@ class LBEigenfunction(ABC):
         self.manifold = manifold
         self.lb_eigenvalue = self.compute_lb_eigenvalue()
 
+    @abstractmethod
     def compute_lb_eigenvalue(self):
         """Compute the Laplace-Beltrami eigenvalues of the eigenfunction."""
         raise NotImplementedError
@@ -205,7 +203,8 @@ class LBEigenspaceWithBasis(LBEigenspaceWithSum, ABC):
 
 
 class AveragedLBEigenspace(LBEigenspaceWithSum):
-    """The Laplace-Beltrami eigenspace for the special orthogonal group."""
+    """The Laplace-Beltrami eigenspace for homogeneous space of a compact Lie group,
+    with the `basis sum` calculated via averaging the character"""
     def __init__(self, representaion: LBEigenspaceWithSum, manifold: HomogeneousSpace):
         """
         :param signature: the signature of a representation
@@ -231,26 +230,29 @@ class LieGroupCharacter(torch.nn.Module, ABC):
         super().__init__()
         self.representation = representation
 
-    def chi(self, x):
+    @abstractmethod
+    def chi(self, gammas):
+        """Calculates the character value at an element of the maximal torus"""
         raise NotImplementedError
+
+    def evaluate(self, x):
+        """Calculates the character value at an element of the group"""
+        gammas = self.representation.manifold.torus_embed(x)
+        return self.chi(gammas)
 
     def forward(self, gammas):
         # [n, dim, dim]
         chi = self.representation.dimension * self.chi(gammas)  # [n]
-
-        #is_close_to_id = self.representation.manifold.close_to_id(x)  # [n]
-        #chi = torch.where(is_close_to_id, self.representation.dimension**2 * torch.ones_like(chi), chi)
-
         return chi
 
 
-class AveragedLieGroupCharacter(torch.nn.Module, ABC):
-    def __init__(self, represntation, space: HomogeneousSpace, chi: LieGroupCharacter):
+class AveragedLieGroupCharacter(torch.nn.Module):
+    """Lie group character averaged over a subgroup"""
+    def __init__(self, representation: AveragedLBEigenspace, space: HomogeneousSpace, chi: LieGroupCharacter):
         super().__init__()
-        self.representation = represntation
+        self.representation = representation
         self.space = space
         self.chi = chi
-
 
     def forward(self, gammas_x_h):
         chi_x_h = self.chi(gammas_x_h).reshape(-1, self.space.average_order)
@@ -309,7 +311,7 @@ class NonCompactSymmetricSpace(AbstractManifold, ABC):
         raise NotImplementedError
 
     def inv(self, x):
-        """ For element x in G calculate x^{-1}"""
+        """ For element x in G calculates x^{-1}"""
         raise NotImplementedError
 
     def pairwise_diff(self, x, y):
@@ -335,10 +337,12 @@ class NonCompactSymmetricSpaceExp(torch.nn.Module, ABC):
         self.n = self.manifold.n
         self.rho = self.compute_rho()  # shape is (r,)
 
+    @abstractmethod
     def iwasawa_decomposition(self, x):
         """For x in G computes Iwasawa decomposition x = h(x)a(x)n(x)"""
         raise NotImplementedError
 
+    @abstractmethod
     def compute_rho(self):
         raise NotImplementedError
 

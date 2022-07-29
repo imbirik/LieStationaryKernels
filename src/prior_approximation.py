@@ -1,9 +1,6 @@
 import torch
 import warnings
 from itertools import islice
-# from functorch import vmap
-
-from src.utils import cartesian_prod
 from math import sqrt
 from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomSpectralKernel
 
@@ -19,7 +16,7 @@ class KarhunenLoeveExpansion(torch.nn.Module):
             approx_order = sum(kernel.manifold.lb_eigenspaces)
 
         if sum(kernel.manifold.lb_eigenspaces) < approx_order:
-            raise ValueError("approx_order must be lower or equal then number of prepared eigenfunctions")
+            raise ValueError("approx_order must be lower or equal then the number of prepared eigenfunctions")
 
         self.num_eigenspaces = 0
         new_order = 0
@@ -129,5 +126,5 @@ class RandomFourierApproximation(torch.nn.Module):
     def _cov(self, x, y):
         x_, y_ = self.kernel.manifold.to_group(x), self.kernel.manifold.to_group(y)
         x_embed, y_embed = self.kernel.manifold.lb_eigenspaces(x_), self.kernel.manifold.lb_eigenspaces(y_)
-        print("max of x_embed:", torch.max(torch.abs(x_embed)))
+        # print("max of x_embed:", torch.max(torch.abs(x_embed)))
         return self.kernel.measure.variance[0] * (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer

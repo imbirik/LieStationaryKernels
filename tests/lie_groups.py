@@ -25,17 +25,17 @@ torch.set_printoptions(precision=2, sci_mode=False, linewidth=160, edgeitems=15)
 
 # Parametrized test, produces test classes called Test_Group.dim.order, for example, Test_SO.3.10 or Test_SU.2.5
 @parameterized_class([
-    {'group': SO, 'dim': 3, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 4, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 5, 'order': 10, 'dtype': torch.double},
-    {'group': SO, 'dim': 6, 'order': 10, 'dtype': torch.double},
-    # {'group': SO, 'dim': 7, 'order': 10, 'dtype': torch.double},
-    # {'group': SO, 'dim': 8, 'order': 10, 'dtype': torch.double},
-    {'group': SU, 'dim': 2, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 3, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 4, 'order': 10, 'dtype': torch.cdouble},
-    {'group': SU, 'dim': 5, 'order': 10, 'dtype': torch.cdouble},
-    # {'group': SU, 'dim': 6, 'order': 10, 'dtype': torch.cdouble},
+    {'group': SO, 'dim': 3, 'order': 20, 'dtype': torch.double},
+    {'group': SO, 'dim': 4, 'order': 20, 'dtype': torch.double},
+    {'group': SO, 'dim': 5, 'order': 20, 'dtype': torch.double},
+    {'group': SO, 'dim': 6, 'order': 20, 'dtype': torch.double},
+    {'group': SO, 'dim': 7, 'order': 20, 'dtype': torch.double},
+    {'group': SO, 'dim': 8, 'order': 20, 'dtype': torch.double},
+    {'group': SU, 'dim': 2, 'order': 20, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 3, 'order': 20, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 4, 'order': 20, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 5, 'order': 20, 'dtype': torch.cdouble},
+    {'group': SU, 'dim': 6, 'order': 20, 'dtype': torch.cdouble},
 ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["group"].__name__}.'
                                                  f'{params_dict["dim"]}.{params_dict["order"]}')
 class TestCompactLieGroups(unittest.TestCase):
@@ -62,30 +62,32 @@ class TestCompactLieGroups(unittest.TestCase):
         conjugates = torch.matmul(torch.matmul(gs,xs), self.group.inv(gs))
         for irrep in self.group.lb_eigenspaces:
             chi = irrep.basis_sum
-            chi_vals_xs = chi(xs)
-            chi_vals_conj = chi(conjugates)
+            chi_vals_xs = chi.evaluate(xs)
+            chi_vals_conj = chi.evaluate(conjugates)
             self.assertTrue(torch.allclose(chi_vals_xs, chi_vals_conj))
 
     def test_character_at_identity_equals_dimension(self):
         identity = torch.eye(self.dim, dtype=self.dtype, device=device)
         for irrep in self.group.lb_eigenspaces:
-            chi_val = irrep.basis_sum.chi(identity).item()
+            chi_val = irrep.basis_sum.evaluate(identity).item()
             self.assertEqual(round(chi_val.real), irrep.dimension)
             self.assertEqual(round(chi_val.imag), 0)
 
     def test_characters_orthogonality(self):
         num_samples_x = 10**5
         xs = self.group.rand(num_samples_x)
+        gammas = self.group.torus_representative(xs)
         num_irreps = len(self.group.lb_eigenspaces)
         scalar_products = torch.zeros((num_irreps, num_irreps), dtype=torch.cdouble)
         for a, b in itertools.product(enumerate(self.group.lb_eigenspaces), repeat=2):
             i, irrep1 = a
             j, irrep2 = b
-            chi1, chi2 = irrep1.basis_sum.chi, irrep2.basis_sum.chi
-            scalar_products[i, j] = torch.mean(torch.conj(chi1(xs)) * chi2(xs))
-        print(torch.max(torch.abs(scalar_products - torch.eye(num_irreps, dtype=torch.cdouble))).item())
+            chi1, chi2 = irrep1.basis_sum, irrep2.basis_sum
+            scalar_products[i, j] = torch.mean(torch.conj(chi1.chi(gammas)) * chi2.chi(gammas))
+        # print(torch.max(torch.abs(scalar_products - torch.eye(num_irreps, dtype=torch.cdouble))).item())
         self.assertTrue(torch.allclose(scalar_products, torch.eye(num_irreps, dtype=torch.cdouble), atol=5e-2))
 
+    @unittest.skip('Very long, not part of the standard testing routine.')
     def test_translated_characters_basis_orthogonality(self):
         sys.stdout.write('\n')
         for irrep in self.group.lb_eigenspaces:
@@ -104,7 +106,7 @@ class TestCompactLieGroups(unittest.TestCase):
                     sys.stdout.flush()
                 sc_prod /= num_batches
                 eyes = torch.eye(dim ** 2, dtype=torch.cdouble, device=device)
-                print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
+                # print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
                 self.assertTrue(torch.allclose(sc_prod, eyes, atol=5e-2))
 
     def test_sampler(self):

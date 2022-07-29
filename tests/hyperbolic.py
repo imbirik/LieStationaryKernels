@@ -7,12 +7,11 @@ from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#device = 'cpu'
 
 class TestHyperbolic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.order = 6, 10**4
+        self.n, self.order = 4, 10**6
         self.space = HyperbolicSpace(n=self.n, order=self.order)
 
         self.lengthscale, self.nu = 3.0, 5.0 + self.space.dim
@@ -59,6 +58,7 @@ class TestHyperbolic(unittest.TestCase):
         dist1 = self.space._dist_to_id(self.x)
         dist2 = self.space.pairwise_dist(self.x, self.space.id.view(-1, self.n)).squeeze()
         self.assertTrue(torch.allclose(dist1, dist2))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

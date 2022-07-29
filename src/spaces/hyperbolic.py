@@ -5,7 +5,6 @@ from src.utils import cartesian_prod
 from math import sqrt
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#device = 'cpu'
 
 dtype = torch.float64
 j = torch.tensor([1j], device=device).item()  # imaginary unit
@@ -57,7 +56,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         return x.squeeze(dim=-1)
 
     def pairwise_diff(self, x, y):
-        """for x of size n and y of size m computes dist(x_i-y_j) and represent as array [n*m,...]"""
+        """for x of size n and y of size m computes dist(x_i-y_j) and represents as array [n*m,...]"""
         """dist(x,y) = arccosh(1+2|x-y|^2/(1-|x|^2)(1-|y|^2)"""
         x_, y_ = cartesian_prod(x, y) # [n,m,d] and [n,m,d]
 

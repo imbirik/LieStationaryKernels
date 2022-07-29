@@ -81,6 +81,7 @@ class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
         x_y_ = torch.bmm(x_, y_)
         return self._dist_to_id(x_y_).reshape(x.shape[0], y.shape[0])
 
+
 class SPDShiftExp(NonCompactSymmetricSpaceExp):
         def __init__(self, lmd, shift, manifold):
             super().__init__(lmd=lmd, shift=shift, manifold=manifold)
@@ -129,20 +130,3 @@ class SPDShiftedNormailizedExp(torch.nn.Module):
         exp = self.exp(x)  # (n, m)
         return torch.einsum('nm,m->nm', exp, self.coeff)  # (n, m)
 
-#
-# if __name__ == "__main__":
-#     n, order = 2, 10
-#     space = SymmetricPositiveDefiniteMatrices(n=n, order=order)
-#     x = space.rand(10)
-#     y = space.rand(10)
-#     y_inv = torch.linalg.inv(y)
-#     x_y_inv = torch.bmm(x, y_inv)
-#     _, eig_vals, _ = torch.linalg.svd(x_y_inv)
-#     #eig_vals = torch.sqrt(eig_vals)
-#     x_cl = torch.linalg.cholesky(x)
-#     y_cl = torch.linalg.cholesky(y)
-#     y_cl_inv = torch.linalg.inv(y_cl)
-#     x_cl_y_cl_inv = torch.bmm(x_cl, y_cl_inv)
-#     _, sing, _ = torch.svd(x_cl_y_cl_inv)
-#     print(torch.sort(eig_vals, dim=1)[0])
-#     print(torch.sort(sing, dim=1)[0])

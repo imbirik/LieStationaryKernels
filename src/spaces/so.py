@@ -11,10 +11,6 @@ import sympy
 from sympy.matrices.determinant import _det as sp_det
 import json
 from pathlib import Path
-#from functorch import vmap
-import pymanopt
-from pymanopt.manifolds.special_orthogonal_group import SpecialOrthogonalGroup
-from torch.autograd.functional import _vmap as vmap
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -29,7 +25,7 @@ class SO(CompactLieGroup):
         :param dim: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
-        if n <= 2:
+        if n <= 2 and order:
             raise ValueError("Dimensions 1, 2 are not supported")
         self.n = n
         self.dim = n * (n-1)//2
@@ -50,7 +46,7 @@ class SO(CompactLieGroup):
     def dist(self, x, y):
         """Batched geodesic distance"""
         diff = torch.bmm(x, self.inv(y))
-        torus_diff = self.torus_embed(diff)
+        torus_diff = self.torus_representative(diff)
         log_torus_diff = torch.arccos(torus_diff.real)
         dist = math.sqrt(2) * torch.minimum(log_torus_diff, 2 * pi - log_torus_diff)
         dist = torch.norm(dist, dim=1)
@@ -107,7 +103,7 @@ class SO(CompactLieGroup):
         eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
-    def torus_embed(self, x):
+    def torus_representative(self, x):
         if self.n % 2 == 1:
             eigvals = torch.linalg.eigvals(x)
             sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
@@ -292,7 +288,7 @@ class SO3Character(LieGroupCharacter):
 
     def chi(self, x):
         l = self.representation.index[0]
-        gamma = self.representation.manifold.torus_embed(x)
+        gamma = self.representation.manifold.torus_representative(x)
         numer = torch.pow(gamma, l+0.5) - torch.pow(torch.conj(gamma), l+0.5)
         denom = torch.sqrt(gamma) - torch.sqrt(torch.conj(gamma))
         return numer / denom
