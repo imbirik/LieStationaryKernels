@@ -86,7 +86,7 @@ class RandomPhaseKernel(AbstractSpectralKernel):
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def compute_normalizer(self):
-        point = self.manifold.rand()
+        point = self.manifold.id
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def sample_phases(self):
@@ -168,7 +168,7 @@ class RandomFourierFeatureKernel(AbstractSpectralKernel):
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def compute_normalizer(self):
-        point = self.manifold.rand()
+        point = self.manifold.id
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def forward(self, x, y=None, normalize=True):

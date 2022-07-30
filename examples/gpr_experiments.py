@@ -26,11 +26,27 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def main(space, n, m):
     print(type(space).__name__, n, m)
 
-    rand_points = space.rand(5)
-    def f(x):
-        dists = space.pairwise_dist(x, rand_points)
-        mean_dist = torch.mean(torch.sin(dists), dim=1)
-        return mean_dist
+    lengthscale, nu, variance = 0.5, 1.5, 4.0
+    # measure = SqExpSpectralMeasure(space.dim, lengthscale, variance=variance)
+    _measure = MaternSpectralMeasure(space.dim, lengthscale, nu, variance)
+
+    if isinstance(space, CompactLieGroup) or isinstance(space, Sphere):
+        _kernel = EigenbasisSumKernel(_measure, space)
+        f = RandomPhaseApproximation(_kernel)
+
+    elif isinstance(space, HomogeneousSpace):
+        _kernel = RandomPhaseKernel(_measure, space, phase_order=25)
+        f = RandomPhaseApproximation(_kernel)
+
+    else:
+        _kernel = RandomFourierFeatureKernel(_measure, space)
+        f = RandomFourierApproximation(_kernel)
+
+    # rand_points = space.rand(3)
+    # def f(x):
+    #     dists = space.pairwise_dist(x, rand_points)
+    #     mean_dist = torch.sum(torch.pow(dists, 4), dim=1)
+    #     return mean_dist.real
 
     n_train, n_test = 50, 100
     train_x, test_x = space.rand(n_train), space.rand(n_test)
@@ -39,9 +55,9 @@ def main(space, n, m):
     #%%
     #configure kernel
 
-    lengthscale, nu, variance = 1, 1.0 + space.dim, 1.0
-    measure = SqExpSpectralMeasure(space.dim, lengthscale, variance=variance)
-    #self.measure = MaternSpectralMeasure(self.space.dim, self.lengthscale, self.nu)
+    lengthscale, nu, variance = 1, 1.5, 1.0
+    #measure = SqExpSpectralMeasure(space.dim, lengthscale, variance=variance)
+    measure = MaternSpectralMeasure(space.dim, lengthscale, nu)
 
     if isinstance(space, CompactLieGroup) or isinstance(space, Sphere):
         kernel = EigenbasisSumKernel(measure, space)
@@ -69,9 +85,13 @@ def main(space, n, m):
     mll_test = mll(pred_f, test_y).item()
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    euclidean_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+    #euclidean_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+    euclidean_kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(1.5))
+    #euclidean_kernel = gpytorch.kernels.MaternKernel(1.5)
+
+    euclidean_kernel.outputscale = 1
     euclidean_model = ExactGPModel(train_x, train_y, likelihood, euclidean_kernel, space).to(device=device)
-    train(euclidean_model, train_x, train_y, 1000, 500)
+    train(euclidean_model, train_x, train_y, 1500, 500)
 
     euclidean_model.eval()
     with torch.no_grad():
@@ -90,11 +110,12 @@ def main(space, n, m):
 
 
 if __name__ == "__main__":
-    groups = [(SO(3), 3, 3), (SO(4), 4, 4), (SO(5), 5, 5),
-              (HyperbolicSpace(4), 4, 1), (HyperbolicSpace(5), 5, 1), (HyperbolicSpace(6), 6, 1),
+    groups = [(SU(2), 2, 2), (SU(3), 3, 3), (SU(4), 4, 4),
+              (SO(3), 3, 3), (SO(4), 4, 4), (SO(5), 5, 5), (SO(6), 6, 6),
               (Grassmannian(3, 1), 3, 1), (Grassmannian(3, 2), 3, 2), (Grassmannian(4, 2), 4, 2),
               (Sphere(2), 3, 1), (Sphere(3), 4, 1), (Sphere(4), 5, 1),
-              (SU(2), 2, 2), (SU(3), 3, 3), (SU(4), 4, 4),
+              (HyperbolicSpace(2), 2, 1), (HyperbolicSpace(3), 3, 1), (HyperbolicSpace(4), 4, 1),
+              (HyperbolicSpace(5), 5, 1), (HyperbolicSpace(6), 6, 1),
               (SymmetricPositiveDefiniteMatrices(2), 2, 2), (SymmetricPositiveDefiniteMatrices(3), 3, 3),
               (SymmetricPositiveDefiniteMatrices(4), 4, 4), (SymmetricPositiveDefiniteMatrices(5), 5, 5),
               ]
@@ -106,5 +127,5 @@ if __name__ == "__main__":
 
     results = pd.DataFrame(results,
             columns=["space", "data_variance", "geometric_mse", "geometric_mll", "euclidean_mse", "euclidean_mll"])
-    results.to_csv("gpr_results.csv")
+    results.to_csv("gpr_results_matern52.csv")
     print(results)

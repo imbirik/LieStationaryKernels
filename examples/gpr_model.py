@@ -11,17 +11,21 @@ gpytorch.settings.cholesky_jitter(double=1e-4)
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, kernel, manifold, point_shape=None):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        #self.mean_module = gpytorch.means.ZeroMean()
+        self.mean_module = gpytorch.means.ZeroMean()
         #self.mean = torch.mean(train_y)
+        #self.mean = 0
 
         self.covar_module = kernel
         self.n = manifold.n
         self.point_shape = point_shape
+        #if point_shape is not None:
+        #    self.covar_module.measure.variance.requires_grad = False
+        #self.variance = torch.var(train_y)
 
     def forward(self, x):
-        #mean_x = self.mean_module(x) + self.mean
-        mean_x = self.mean_module(x)
+        #mean_x = self.mean_module(x)
+        #mean_x = torch.ones((x.shape[0],), device=device, dtype=dtype) * self.mean
+        mean_x = torch.zeros((x.shape[0],), device=device, dtype=dtype)
         if self.point_shape is not None:
             data = x.view(*x.shape[:-1], *self.point_shape)
         else:
@@ -30,12 +34,13 @@ class ExactGPModel(gpytorch.models.ExactGP):
             else:
                 data = x
         covar_x = self.covar_module(data) + 1e-6*torch.eye(x.shape[0], device=device, dtype=dtype)
+        # covar_x = self.variance * covar_x
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
 #%%
 
-def train(model: ExactGPModel, train_x, train_y, training_iter=900, lr_scheduler_step=300, lr=0.1):
+def train(model: ExactGPModel, train_x, train_y, training_iter=900, lr_scheduler_step=300, lr=1):
     training_iter = training_iter
     # Find optimal model hyperparameters
     model.train()
@@ -60,17 +65,21 @@ def train(model: ExactGPModel, train_x, train_y, training_iter=900, lr_scheduler
         scheduler.step()
         if i % 100 == 99:
             try:
+                #lengthscale = model.covar_module.lengthscale.item()
                 lengthscale = model.covar_module.base_kernel.lengthscale.item()
-                variance = model.covar_module.outputscale
+                #variance = model.variance.item()
+                variance = model.covar_module.outputscale.item()
             except:
                 lengthscale = model.covar_module.measure.lengthscale.item()
+                # variance = (model.variance * model.covar_module.measure.variance).item()
                 variance = model.covar_module.measure.variance.item()
-            # mean = model.mean
-            mean = model.mean_module.constant
+            # mean = model.mean.item()
+            # mean = model.mean_module.constant.item()
+            mean = 0
             print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f variance: %.3f   noise: %.3f, mean: %3f' % (
                 i + 1, training_iter, loss.item(),
                 lengthscale,
                 variance,
                 model.likelihood.noise.item(),
-                mean.item()
+                mean
             ))

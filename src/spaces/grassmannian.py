@@ -65,6 +65,7 @@ class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
         HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
+        self.id = self.id.view((1, self.n, self.m))
 
     def H_to_G(self, h):
         return h
@@ -110,6 +111,7 @@ class Grassmannian(HomogeneousSpace, Grassmannian_):
         HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
+        self.id = self.id.view((1, self.n, self.m))
 
     def H_to_G(self, h):
         return h

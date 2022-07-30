@@ -17,7 +17,7 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 class SymmetricPositiveDefiniteMatrices(NonCompactSymmetricSpace):
     """Class of Positive definite matrices represented as symmetric space GL(n,R)/O(n,R)"""
 
-    def __init__(self, n: int, order=100):
+    def __init__(self, n: int, order=200):
         super(SymmetricPositiveDefiniteMatrices, self).__init__()
         self.n = n
         self.dim = n * (n+1)//2

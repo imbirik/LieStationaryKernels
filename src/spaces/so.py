@@ -112,6 +112,10 @@ class SO(CompactLieGroup):
             return gamma
         else:
             eigvals, eigvecs = torch.linalg.eig(x)
+            sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
+            eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
+            sorted_ind_vecs = torch.tile(sorted_ind.view(-1, self.n, 1), (1, 1, self.n))
+            eigvecs = torch.gather(eigvecs, dim=1, index=sorted_ind_vecs)
             # c is a matrix transforming x into its canonical form (with 2x2 blocks)
             c = torch.zeros_like(eigvecs)
             c[..., ::2] = eigvecs[..., ::2].real

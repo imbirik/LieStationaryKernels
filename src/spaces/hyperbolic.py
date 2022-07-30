@@ -3,7 +3,7 @@ from src.space import NonCompactSymmetricSpace
 from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
 from src.utils import cartesian_prod
 from math import sqrt
-
+from torch.distributions import Normal, StudentT
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 dtype = torch.float64
@@ -26,12 +26,12 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
 
     def _generate_lb_eigenspace(self, measure):
         if isinstance(measure, MaternSpectralMeasure):
-            student_samples = torch.distributions.StudentT(df=measure.nu - 1, scale=1).rsample((self.order,))
-            lmd = torch.abs(student_samples)
+            df = 2*measure.nu + measure.dim
+            student_samples = StudentT(df=df - 1, scale=1).rsample((self.order,))
+            lmd = torch.abs(student_samples) / torch.sqrt(df-1)
         elif isinstance(measure, SqExpSpectralMeasure):
-            normal_samples = torch.distributions.Normal(torch.tensor(0, dtype=dtype, device=device),
-                                                        torch.tensor(1, dtype=dtype, device=device))\
-                .rsample((self.order,)).type(dtype)
+            normal_samples = Normal(torch.tensor(0, dtype=dtype, device=device),
+                                    torch.tensor(1, dtype=dtype, device=device)).rsample((self.order,)).type(dtype)
             lmd = torch.abs(normal_samples)
         else:
             return NotImplementedError
@@ -43,8 +43,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         if self.normalized_lmd is None:
             self._generate_lb_eigenspace(measure)
         if isinstance(measure, MaternSpectralMeasure):
-            nu, lengthscale = measure.nu[0], measure.lengthscale[0]
-            scale = 1.0/torch.sqrt(nu/(nu-1)) * torch.sqrt(1/4 + 2 * nu / lengthscale)
+            scale = torch.sqrt(1/4 + 2 * measure.nu[0] / (measure.lengthscale[0] ** 2))
         elif isinstance(measure, SqExpSpectralMeasure):
             scale = 1.0/torch.abs(measure.lengthscale[0])
         else:
@@ -81,7 +80,7 @@ class HyperbolicSpace(NonCompactSymmetricSpace):
         """Note, there is no standard method to sample from Hyperbolic space since Haar measure is infinite.
            We will sample from unit ball uniformly. """
         sphere = self.rand_phase(n)
-        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n)*0.95
+        r = torch.pow(torch.rand(n, device=device, dtype=dtype), 1/self.n)*0.99
         return sphere * r[:, None].clone()
 
     def inv(self, x):

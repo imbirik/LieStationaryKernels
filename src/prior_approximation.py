@@ -48,18 +48,11 @@ class KarhunenLoeveExpansion(torch.nn.Module):
 
 
 class RandomPhaseApproximation(torch.nn.Module):
-    def __init__(self, kernel: EigenbasisSumKernel, approx_order=None, phase_order=1000):
+    def __init__(self, kernel: EigenbasisSumKernel, phase_order=1000):
         super().__init__()
 
         self.kernel = kernel
-
-        if approx_order is None:
-            approx_order = len(self.kernel.manifold.lb_eigenspaces)
-
-        if approx_order < len(self.kernel.manifold.lb_eigenspaces):
-            raise ValueError("number of computed eigenfunctions of space must be greater than approx_order")
-
-        self.approx_order = approx_order
+        self.approx_order = len(self.kernel.manifold.lb_eigenspaces)
         self.phase_order = phase_order
         self.weights = self.sample_weights()
         self.phases = self.sample_phases()
