@@ -1,37 +1,37 @@
 import unittest
 from parameterized import parameterized_class
 import torch
-#from functorch import vmap
-from torch.autograd.functional import _vmap as vmap
 import numpy as np
 from parameterized import parameterized_class
 from src.spaces.grassmannian import Grassmannian, OrientedGrassmannian
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel, RandomPhaseKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
 from src.prior_approximation import RandomPhaseApproximation
-from src.utils import cartesian_prod
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.set_printoptions(precision=5, sci_mode=False, linewidth=120, edgeitems=5)
 
-
-# @parameterized_class([
-#     {'space': Grassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
-#     {'space': Grassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
-#     {'space': Grassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
-#     {'space': Grassmannian, 'n': 5, 'm': 1, 'order': 10, 'dtype': torch.double},
-#     {'space': OrientedGrassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
-#     {'space': OrientedGrassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
-#     {'space': OrientedGrassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
-#     {'space': OrientedGrassmannian, 'n': 5, 'm': 1, 'order': 10, 'dtype': torch.double},
-# ], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["space"].__name__}.'
-#                                                  f'{params_dict["n"]},{params_dict["m"]}.{params_dict["order"]}')
-class TestGrassmanian(unittest.TestCase):
+@parameterized_class([
+    {'space': Grassmannian, 'n': 3, 'm': 1, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 4, 'm': 1, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 5, 'm': 1, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 6, 'm': 1, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 6, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': Grassmannian, 'n': 6, 'm': 3, 'order': 10, 'dtype': torch.double},
+    {'space': OrientedGrassmannian, 'n': 4, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': OrientedGrassmannian, 'n': 5, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': OrientedGrassmannian, 'n': 6, 'm': 2, 'order': 10, 'dtype': torch.double},
+    {'space': OrientedGrassmannian, 'n': 6, 'm': 3, 'order': 10, 'dtype': torch.double},
+], class_name_func=lambda cls, num, params_dict: f'Test_{params_dict["space"].__name__}.'
+                                                 f'{params_dict["n"]},{params_dict["m"]}.{params_dict["order"]}')
+class TestGrassmannian(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.n, self.m = 3, 1
-        self.order, self.average_order = 10, 1000
-        self.space = Grassmannian(self.n, self.m, self.order, self.average_order)
+        self.average_order = 1000
+        self.space = self.space(self.n, self.m, self.order, self.average_order)
         #self.space = Grassmannian(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
         self.lengthscale, self.nu = 1.0, 5.0
@@ -49,18 +49,18 @@ class TestGrassmanian(unittest.TestCase):
         self.assertTrue(torch.allclose(x_norm, torch.ones_like(x_norm)))
 
     def test_symmetry(self):
-        if self.m == 1 and isinstance(self.space, Grassmannian):
-            cov = self.func_kernel(self.x, -self.x)
-            print(cov)
-            diag_cov = torch.diagonal(cov)
-            self.assertTrue(torch.allclose(diag_cov, torch.ones_like(diag_cov), atol=5e-2))
-
+        if not (self.m == 1 and isinstance(self.space, Grassmannian)):
+            self.skipTest('Only for Gr(_,1).')
+        cov = self.func_kernel(self.x, -self.x)
+        # print(cov)
+        diag_cov = torch.diagonal(cov)
+        self.assertTrue(torch.allclose(diag_cov, torch.ones_like(diag_cov), atol=5e-2))
 
     def test_prior(self) -> None:
         cov_func = self.func_kernel(self.x, self.x)
         cov_prior = self.sampler_kernel(self.x, self.x).evaluate()
-        print(cov_func)
-        print(cov_prior)
+        # print(cov_func)
+        # print(cov_prior)
         print(cov_prior-cov_func)
         self.assertTrue(torch.allclose(cov_prior, cov_func, atol=5e-2))
 
@@ -82,10 +82,11 @@ class TestGrassmanian(unittest.TestCase):
             cov1 = (f(x_yinv)/dim_sq_f).real
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
             cov2 = ((embed_x @ torch.conj(embed_y.T))/dim_sq_f).real
-            print(cov1)
-            print(cov2)
+            # print(cov1)
+            # print(cov2)
+            print(cov1 - cov2)
             #self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2, rtol=5e-2))
-            print('passed')
+            # print('passed')
 
 
 if __name__ == '__main__':

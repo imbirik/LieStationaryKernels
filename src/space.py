@@ -244,7 +244,7 @@ class LieGroupCharacter(torch.nn.Module, ABC):
 
     def evaluate(self, x):
         """Calculates the character value at an element of the group"""
-        gammas = self.representation.manifold.torus_embed(x)
+        gammas = self.representation.manifold.torus_representative(x)
         return self.chi(gammas)
 
     def forward(self, gammas):

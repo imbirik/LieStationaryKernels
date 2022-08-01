@@ -9,6 +9,7 @@ from src.prior_approximation import RandomPhaseApproximation
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.set_printoptions(precision=5, sci_mode=False, linewidth=120, edgeitems=5)
 
 
 # Parametrized test, produces test classes called Test_Group.dim.order, for example, Test_SO.3.10 or Test_SU.2.5
@@ -68,6 +69,7 @@ class TestStiefel(unittest.TestCase):
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
             cov2 = (embed_x @ torch.conj(embed_y.T))/dim_sq_f
+            print(cov1 - cov2)
             self.assertTrue(torch.allclose(cov1, cov2, atol=5e-2, rtol=5e-2))
             # print(torch.max(torch.abs(cov1 - cov2)).item())
             # print('passed')

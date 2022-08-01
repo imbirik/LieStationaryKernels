@@ -23,6 +23,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 torch.set_printoptions(precision=2, sci_mode=False, linewidth=160, edgeitems=15)
 
+
 # Parametrized test, produces test classes called Test_Group.dim.order, for example, Test_SO.3.10 or Test_SU.2.5
 @parameterized_class([
     {'group': SO, 'dim': 3, 'order': 20, 'dtype': torch.double},
@@ -84,7 +85,7 @@ class TestCompactLieGroups(unittest.TestCase):
             j, irrep2 = b
             chi1, chi2 = irrep1.basis_sum, irrep2.basis_sum
             scalar_products[i, j] = torch.mean(torch.conj(chi1.chi(gammas)) * chi2.chi(gammas))
-        # print(torch.max(torch.abs(scalar_products - torch.eye(num_irreps, dtype=torch.cdouble))).item())
+        print(torch.max(torch.abs(scalar_products - torch.eye(num_irreps, dtype=torch.cdouble))).item())
         self.assertTrue(torch.allclose(scalar_products, torch.eye(num_irreps, dtype=torch.cdouble), atol=5e-2))
 
     @unittest.skip('Very long, not part of the standard testing routine.')
@@ -124,8 +125,7 @@ class TestCompactLieGroups(unittest.TestCase):
         phase, weight = self.sampler.phases[0], self.sampler.weights[0]  # [num_phase, ...], [num_phase]
         x_phase_inv = self.group.pairwise_diff(x, phase)
         eigen_embedding = f(x_phase_inv).view(x.size()[0], phase.size()[0])
-        eigen_embedding = eigen_embedding / np.sqrt(
-            self.sampler.phase_order)
+        eigen_embedding = eigen_embedding / np.sqrt(self.sampler.phase_order)
         return eigen_embedding
 
     def _test_eigenfunction(self) -> None:
@@ -134,10 +134,11 @@ class TestCompactLieGroups(unittest.TestCase):
         x_yinv = self.group.pairwise_diff(x, y)
         for eigenspace in self.group.lb_eigenspaces:
             f = eigenspace.basis_sum
-            dim_sq_f = f.representation.dimension ** 2
+            dim_sq_f = eigenspace.dimension ** 2
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
             cov2 = (embed_x @ torch.conj(embed_y.T))/dim_sq_f
+            print(cov1 - cov2)
             self.assertTrue(torch.allclose(cov1, cov2, atol=2e-1, rtol=2e-1))
             # print('passed')
 

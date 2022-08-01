@@ -14,7 +14,6 @@ from pathlib import Path
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-pi = 2*torch.acos(torch.zeros(1)).item()
 
 
 class SO(CompactLieGroup):
@@ -39,7 +38,6 @@ class SO(CompactLieGroup):
         self.id = torch.eye(self.n, device=device, dtype=dtype)
         CompactLieGroup.__init__(self, order=order)
 
-
     def difference(self, x, y):
         return x @ y.T
 
@@ -48,7 +46,7 @@ class SO(CompactLieGroup):
         diff = torch.bmm(x, self.inv(y))
         torus_diff = self.torus_representative(diff)
         log_torus_diff = torch.arccos(torus_diff.real)
-        dist = math.sqrt(2) * torch.minimum(log_torus_diff, 2 * pi - log_torus_diff)
+        dist = math.sqrt(2) * torch.minimum(log_torus_diff, 2 * math.pi - log_torus_diff)
         dist = torch.norm(dist, dim=1)
         return dist
 
@@ -56,7 +54,7 @@ class SO(CompactLieGroup):
         """For n points x_i and m points y_j computed dist(x_i,y_j)"""
         x_y_ = self.pairwise_embed(x, y)
         log_x_y_ = torch.arccos(x_y_.real)
-        dist = math.sqrt(2)*torch.minimum(log_x_y_, 2*pi-log_x_y_)
+        dist = math.sqrt(2) * torch.minimum(log_x_y_, 2 * math.pi - log_x_y_)
         dist = torch.norm(dist, dim=1).reshape(x.shape[0], y.shape[0])
         return dist
 
@@ -114,14 +112,17 @@ class SO(CompactLieGroup):
             eigvals, eigvecs = torch.linalg.eig(x)
             sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
             eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
-            sorted_ind_vecs = torch.tile(sorted_ind.view(-1, self.n, 1), (1, 1, self.n))
-            eigvecs = torch.gather(eigvecs, dim=1, index=sorted_ind_vecs)
+            eigvecs = torch.gather(eigvecs, dim=-1, index=sorted_ind.unsqueeze(-2).broadcast_to(eigvecs.shape))
             # c is a matrix transforming x into its canonical form (with 2x2 blocks)
             c = torch.zeros_like(eigvecs)
-            c[..., ::2] = eigvecs[..., ::2].real
-            c[..., 1::2] = eigvecs[..., ::2].imag
-            c *= math.sqrt(2)
-            eigvals[..., 0] = torch.pow(eigvals[..., 0], torch.det(c))
+            c[..., ::2] = eigvecs[..., ::2] + eigvecs[..., 1::2]
+            c[..., 1::2] = (eigvecs[..., ::2] - eigvecs[..., 1::2])
+            # eigenvectors calculated by LAPACK are either real or purely imaginary, make everything real
+            # WARNING: might depend on the implementation of the eigendecomposition!
+            c = c.real + c.imag
+            # normalize s.t. det(c)≈±1, probably unnecessary
+            c /= math.sqrt(2)
+            torch.pow(eigvals[..., 0], torch.det(c).sgn(), out=eigvals[..., 0])
             gamma = eigvals[..., ::2]
             return gamma
 
@@ -168,7 +169,6 @@ class SOLBEigenspace(LBEigenspaceWithSum):
 
 class SOCharacter(LieGroupCharacter):
     """Representation character for special orthogonal group"""
-    # @staticmethod
 
     @staticmethod
     def xi0(qs, gamma):
@@ -288,8 +288,6 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
 
 
 class SO3Character(LieGroupCharacter):
-    @staticmethod
-
     def chi(self, x):
         l = self.representation.index[0]
         gamma = self.representation.manifold.torus_representative(x)
