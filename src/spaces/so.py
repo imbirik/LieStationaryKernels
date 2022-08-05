@@ -60,13 +60,22 @@ class SO(CompactLieGroup):
         return dist
 
     def rand(self, num=1):
-        h = torch.randn((num, self.n, self.n), device=device, dtype=dtype)
-        q, r = torch.linalg.qr(h)
-        r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
-        q *= r_diag_sign[:, None]
-        q_det_sign = torch.sign(torch.det(q))
-        q[:, :, 0] *= q_det_sign[:, None]
-        return q
+        if self.n == 2:
+            thetas = 2 * math.pi * torch.rand((num, 1), dtype=dtype, device=device)
+            c = torch.cos(thetas)
+            s = torch.sin(thetas)
+            r1 = torch.hstack((c, s))
+            r2 = torch.hstack((-s, c))
+            q = torch.vstack((r1, r2))
+            return q
+        else:
+            h = torch.randn((num, self.n, self.n), device=device, dtype=dtype)
+            q, r = torch.linalg.qr(h)
+            r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
+            q *= r_diag_sign[:, None]
+            q_det_sign = torch.sign(torch.det(q))
+            q[:, :, 0] *= q_det_sign[:, None]
+            return q
 
     def generate_signatures(self, order):
         """Generate the signatures of irreducible representations
