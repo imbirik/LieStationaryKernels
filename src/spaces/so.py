@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from src.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
-from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
+from src.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
 from functools import reduce
 import operator
 import math
@@ -17,17 +17,18 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class SO(CompactLieGroup):
-    """SO(dim), special orthogonal group of degree dim."""
-
+    """
+    SO(n), special orthogonal group of degree dim.
+    """
     def __init__(self, n: int, order=20):
         """
-        :param dim: dimension of the space
+        :param n: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
         if n <= 2 and order:
             raise ValueError("Dimensions 1, 2 are not supported")
         self.n = n
-        self.dim = n * (n-1)//2
+        self.dim = n * (n-1) // 2
         self.rank = n // 2
         self.order = order
         self.Eigenspace = SOLBEigenspace
@@ -58,8 +59,8 @@ class SO(CompactLieGroup):
         dist = torch.norm(dist, dim=1).reshape(x.shape[0], y.shape[0])
         return dist
 
-    def rand(self, n=1):
-        h = torch.randn((n, self.n, self.n), device=device, dtype=dtype)
+    def rand(self, num=1):
+        h = torch.randn((num, self.n, self.n), device=device, dtype=dtype)
         q, r = torch.linalg.qr(h)
         r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
         q *= r_diag_sign[:, None]
@@ -102,13 +103,22 @@ class SO(CompactLieGroup):
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
     def torus_representative(self, x):
-        if self.n % 2 == 1:
+        if self.n == 3:
+            # In SO(3) the torus representative is determined by the non-trivial pair of eigenvalues,
+            # which can be calculated from the trace
+            trace = torch.einsum('...ii->...', x)
+            real = (trace - 1) / 2
+            imag = torch.sqrt(torch.max(1-torch.square(real), torch.zeros_like(real)))
+            return torch.view_as_complex(torch.cat((real.unsqueeze(-1), imag.unsqueeze(-1)), -1)).unsqueeze(-1)
+        elif self.n % 2 == 1:
+            # In SO(2n+1) the torus representative is determined by the (unordered) non-trivial eigenvalues
             eigvals = torch.linalg.eigvals(x)
             sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
             eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
             gamma = eigvals[..., 0:-1:2]
             return gamma
         else:
+            # In SO(2n) each unordered set of eigenvalues determines two conjugacy classes
             eigvals, eigvecs = torch.linalg.eig(x)
             sorted_ind = torch.sort(torch.view_as_real(eigvals), dim=-2).indices[..., 0]
             eigvals = torch.gather(eigvals, dim=-1, index=sorted_ind)
@@ -127,7 +137,7 @@ class SO(CompactLieGroup):
             return gamma
 
 
-class SOLBEigenspace(LBEigenspaceWithSum):
+class SOLBEigenspace(LBEigenspaceWithBasis):
     """The Laplace-Beltrami eigenspace for the special orthogonal group."""
     def __init__(self, signature, *, manifold: SO):
         """
@@ -159,49 +169,14 @@ class SOLBEigenspace(LBEigenspaceWithSum):
         lb_eigenvalue = (np.linalg.norm(rho + np_sgn) ** 2 - np.linalg.norm(rho) ** 2)  # / killing_form_coeff
         return lb_eigenvalue.item()
 
-    def compute_basis_sum(self):
-        return SOCharacterDenominatorFree(representation=self)
-        # if self.manifold.n == 3:
-        #     return SO3Character(representation=self)
-        # else:
-        #     return SOCharacter(representation=self)
+    def compute_phase_function(self):
+        return SOCharacter(representation=self)
+
+    def compute_basis(self):
+        return TranslatedCharactersBasis(representation=self)
 
 
 class SOCharacter(LieGroupCharacter):
-    """Representation character for special orthogonal group"""
-
-    @staticmethod
-    def xi0(qs, gamma):
-        a = torch.stack([torch.pow(gamma, q) + torch.pow(gamma, -q) for q in qs], dim=-1)
-        return torch.det(a)
-
-    @staticmethod
-    def xi1(qs, gamma):
-        a = torch.stack([torch.pow(gamma, q) - torch.pow(gamma, -q) for q in qs], dim=-1)
-        return torch.det(a)
-
-    def chi(self, x):
-        rank = self.representation.manifold.rank
-        signature = self.representation.index
-        # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
-        gamma = self.representation.manifold.torus_embed(x)
-        if self.representation.manifold.n % 2:
-            qs = [pk + rank - k - 1 / 2 for k, pk in enumerate(signature)]
-            return self.xi1(qs, gamma) / \
-                   self.xi1([k - 1 / 2 for k in range(rank, 0, -1)], gamma)
-        else:
-            qs = [pk + rank - k - 1 if k != rank - 1 else abs(pk)
-                  for k, pk in enumerate(signature)]
-            if signature[-1] == 0:
-                return self.xi0(qs, gamma) / \
-                       self.xi0(list(reversed(range(rank))), gamma)
-            else:
-                sign = math.copysign(1, signature[-1])
-                return (self.xi0(qs, gamma) + self.xi1(qs, gamma) * sign) / \
-                       (1 * self.xi0(list(reversed(range(rank))), gamma))
-
-
-class SOCharacterDenominatorFree(LieGroupCharacter):
     def __init__(self, *, representation: SOLBEigenspace, precomputed=True):
         super().__init__(representation=representation)
         if precomputed:
@@ -285,12 +260,3 @@ class SOCharacterDenominatorFree(LieGroupCharacter):
         for coeff, monom in zip(self.coeffs, self.monoms):
             char_val += coeff * torch.prod(gammas ** monom, dim=-1)
         return char_val
-
-
-class SO3Character(LieGroupCharacter):
-    def chi(self, x):
-        l = self.representation.index[0]
-        gamma = self.representation.manifold.torus_representative(x)
-        numer = torch.pow(gamma, l+0.5) - torch.pow(torch.conj(gamma), l+0.5)
-        denom = torch.sqrt(gamma) - torch.sqrt(torch.conj(gamma))
-        return numer / denom

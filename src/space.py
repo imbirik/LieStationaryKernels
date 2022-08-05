@@ -183,43 +183,52 @@ class LBEigenspace(ABC):
         raise NotImplementedError
 
 
-class LBEigenspaceWithSum(LBEigenspace, ABC):
-    """Laplace-Beltrami eigenspace ABC in case the sum function of an orthonormal basis paired products is available"""
+class LBEigenspaceWithPhaseFunction(LBEigenspace, ABC):
+    """
+    Laplace-Beltrami eigenspace ABC in case the phase function is available.
+
+    The `phase function` if a function `f` which equals the sum of orthonormal eigenfunctions for a given
+    Laplace-Beltrami eigenvalue, evaluated at the quotient/difference/distance of points.
+    Examples include Gegenbauer polynomials for spheres and representation characters for compact Lie groups.
+    """
     @lazy_property
-    def basis_sum(self):
-        basis_sum = self.compute_basis_sum()
-        return basis_sum
+    def phase_function(self):
+        phase_function = self.compute_phase_function()
+        return phase_function
 
     @abstractmethod
-    def compute_basis_sum(self):
+    def compute_phase_function(self):
         """Compute the sum of the orthonormal basis paired products."""
         raise NotImplementedError
 
 
-class LBEigenspaceWithBasis(LBEigenspaceWithSum, ABC):
-    """Laplace-Beltrami eigenspace ABC in case orthonormal basis is available"""
+class LBEigenspaceWithBasis(LBEigenspaceWithPhaseFunction, ABC):
+    """
+    Laplace-Beltrami eigenspace ABC in case orthonormal basis is available.
+    """
     @lazy_property
     def basis(self):
         basis = self.compute_basis()
         return basis
 
-    @abstractmethod
     def compute_basis(self):
-        """Compute an orthonormal basis of the eigenspace."""
+        """
+        Compute an orthonormal basis of the eigenspace.
+        """
         raise NotImplementedError
 
 
-class AveragedLBEigenspace(LBEigenspaceWithSum):
+class AveragedLBEigenspace(LBEigenspaceWithPhaseFunction):
     """The Laplace-Beltrami eigenspace for homogeneous space of a compact Lie group,
-    with the `basis sum` calculated via averaging the character"""
-    def __init__(self, representaion: LBEigenspaceWithSum, manifold: HomogeneousSpace):
+    with the `phase function` calculated via averaging the character"""
+    def __init__(self, representation: LBEigenspaceWithPhaseFunction, manifold: HomogeneousSpace):
         """
         :param signature: the signature of a representation
         :param manifold: the "parent" manifold, an instance of SO
         """
-        self.initial_representation = representaion
-        super().__init__(representaion.index, manifold=manifold)
-        self.inv_dimension = self.manifold.compute_inv_dimension(representaion.index)
+        self.initial_representation = representation
+        super().__init__(representation.index, manifold=manifold)
+        self.inv_dimension = self.manifold.compute_inv_dimension(representation.index)
 
     def compute_dimension(self):
         return self.initial_representation.compute_dimension()
@@ -227,8 +236,8 @@ class AveragedLBEigenspace(LBEigenspaceWithSum):
     def compute_lb_eigenvalue(self):
         return self.initial_representation.compute_lb_eigenvalue()
 
-    def compute_basis_sum(self):
-        return AveragedLieGroupCharacter(self, self.manifold, self.initial_representation.compute_basis_sum())
+    def compute_phase_function(self):
+        return AveragedLieGroupCharacter(self, self.manifold, self.initial_representation.compute_phase_function())
 
 
 class LieGroupCharacter(torch.nn.Module, ABC):
@@ -273,11 +282,16 @@ class AveragedLieGroupCharacter(torch.nn.Module):
 
 
 class TranslatedCharactersBasis(torch.nn.Module):
+    """
+    The orthogonal basis of the matrix coefficients space based on translated characters.
+    More precisely, if `V` is an irreducible representation with character `chi`,
+    consider a family of functions `x -> chi(gx)` for distinct `g`. Orthogonalize.
+    """
     def __init__(self, *, representation: LBEigenspaceWithBasis):
         super().__init__()
         self.representation = representation
         dim = self.representation.dimension
-        self.character = self.representation.basis_sum
+        self.character = self.representation.phase_function
         gram_is_spd = False
         attempts = 0
         while not gram_is_spd:

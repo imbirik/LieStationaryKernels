@@ -46,7 +46,7 @@ class EigenbasisSumKernel(AbstractSpectralKernel):
         cov = torch.zeros(len(x), len(y), dtype=dtype, device=device)
         for eigenspace in self.manifold.lb_eigenspaces:
             lmd = eigenspace.lb_eigenvalue
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             cov += self.measure(lmd) * f(x_y_embed).view(x.size()[0], y.size()[0]).real
         if normalize:
             return torch.abs(self.measure.variance[0]) * cov/self.normalizer
@@ -101,7 +101,7 @@ class RandomPhaseKernel(AbstractSpectralKernel):
 
         for i, eigenspace in enumerate(islice(self.manifold.lb_eigenspaces, self.approx_order)):
             lmd = eigenspace.lb_eigenvalue
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             eigen_embedding = f(phase_x_inv).real.view(self.phase_order, x.size()[0]).T
             eigen_embedding = torch.sqrt(self.measure(lmd)) * eigen_embedding
             eigen_embedding = eigen_embedding / math.sqrt(self.phase_order)

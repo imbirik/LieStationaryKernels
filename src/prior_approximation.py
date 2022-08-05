@@ -75,7 +75,7 @@ class RandomPhaseApproximation(torch.nn.Module):
 
         for i, eigenspace in enumerate(islice(self.kernel.manifold.lb_eigenspaces, self.approx_order)):
             lmd = eigenspace.lb_eigenvalue
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             eigen_embedding = f(phase_x_inv).real.view(self.phase_order, x.size()[0]).T
             eigen_embedding = torch.sqrt(self.kernel.measure.variance[0] * self.kernel.measure(lmd)) * eigen_embedding
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)

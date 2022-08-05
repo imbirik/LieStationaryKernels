@@ -1,13 +1,12 @@
 import torch
 import numpy as np
-from src.space import CompactLieGroup, LBEigenspaceWithSum, LieGroupCharacter
+from src.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
 from functools import reduce
 import operator
 import math
 import itertools
 import more_itertools
-from src.utils import vander_det, vander_det2, poly_eval_tensor, fixed_length_partitions, partition_dominance_cone
-from scipy.special import chebyu
+from src.utils import partition_dominance_cone
 import sympy
 from sympy.matrices.determinant import _det as sp_det
 import json
@@ -19,11 +18,12 @@ pi = 2*torch.acos(torch.zeros(1)).item()
 
 
 class SU(CompactLieGroup):
-    """SU(dim), special unitary group of degree dim."""
-
+    """
+    SU(n), special unitary group of degree `n`.
+    """
     def __init__(self, n: int, order=10):
         """
-        :param dim: dimension of the space
+        :param n: dimension of the space
         :param order: the order of approximation, the number of representations calculated
         """
         self.n = n
@@ -42,8 +42,8 @@ class SU(CompactLieGroup):
     def difference(self, x, y):
         return x @ y.mH
 
-    def rand(self, n=1):
-        h = torch.randn((n, self.n, self.n), dtype=dtype, device=device)
+    def rand(self, num=1):
+        h = torch.randn((num, self.n, self.n), dtype=dtype, device=device)
         q, r = torch.linalg.qr(h)
         r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
         r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
@@ -78,8 +78,7 @@ class SU(CompactLieGroup):
         eyes = torch.broadcast_to(torch.flatten(torch.eye(d, dtype=dtype, device=device)), x_.shape)  # [..., d * d]
         return torch.all(torch.isclose(x_, eyes, atol=1e-5), dim=-1)
 
-    @staticmethod
-    def torus_representative(x):
+    def torus_representative(self, x):
         return torch.linalg.eigvals(x)
 
     def pairwise_dist(self, x, y):
@@ -92,13 +91,15 @@ class SU(CompactLieGroup):
         dist = torch.norm(dist, dim=1).reshape(x.shape[0], y.shape[0])
         return dist
 
-class SULBEigenspace(LBEigenspaceWithSum):
-    """The Laplace-Beltrami eigenspace for the special unitary group."""
 
+class SULBEigenspace(LBEigenspaceWithBasis):
+    """
+    The Laplace-Beltrami eigenspace for the special unitary group.
+    """
     def __init__(self, signature, *, manifold: SU):
         """
         :param signature: the signature of a representation
-        :param manifold: the "parent" manifold, an instance of SO
+        :param manifold: the "parent" manifold, an instance of SU
         """
         super().__init__(signature, manifold=manifold)
 
@@ -118,23 +119,14 @@ class SULBEigenspace(LBEigenspaceWithSum):
         lb_eigenvalue = (np.linalg.norm(rho + sgn) ** 2 - np.linalg.norm(rho) ** 2)  # / (2 * self.manifold.n)
         return lb_eigenvalue.item()
 
-    def compute_basis_sum(self):
-        return SUCharacterDenominatorFree(representation=self)
+    def compute_phase_function(self):
+        return SUCharacter(representation=self)
+
+    def compute_basis(self):
+        return TranslatedCharactersBasis(representation=self)
+
 
 class SUCharacter(LieGroupCharacter):
-    """Representation character for special unitary group"""
-
-    def chi(self, gammas):
-        n = self.representation.manifold.n
-        signature = self.representation.index
-        # eps = 0#1e-3*torch.tensor([1+1j]).cuda().item()
-        qs = [pk + n - k - 1 for k, pk in enumerate(signature)]
-        numer_mat = torch.stack([torch.pow(gammas, q) for q in qs], dim=-1)
-        vander = vander_det2(gammas)
-        return torch.det(numer_mat) / vander
-
-
-class SUCharacterDenominatorFree(LieGroupCharacter):
     def __init__(self, *, representation: SULBEigenspace, precomputed=True):
         super().__init__(representation=representation)
         if precomputed:
@@ -175,13 +167,3 @@ class SUCharacterDenominatorFree(LieGroupCharacter):
         for coeff, monom in zip(self.coeffs, self.monoms):
             char_val += coeff * torch.prod(gammas ** monom, dim=-1)
         return char_val
-
-
-class SU2Character(LieGroupCharacter):
-    def __init__(self, *, representation: LBEigenspaceWithSum):
-        super().__init__(representation=representation)
-        self.coeffs = chebyu(self.representation.index[0]).coef
-
-    def chi(self, x):
-        trace = torch.einsum('...ii->...', x)
-        return poly_eval_tensor(trace / 2, self.coeffs)

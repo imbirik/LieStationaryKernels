@@ -3,8 +3,8 @@ from typing import Union
 
 import sys
 
-from so import SO, SOCharacterDenominatorFree
-from su import SU, SUCharacterDenominatorFree
+from so import SO, SOCharacter
+from su import SU, SUCharacter
 
 
 class CompactJSONEncoder(json.JSONEncoder):
@@ -80,17 +80,17 @@ recalculate = False
 storage_file_name = 'precomputed_characters.json'
 
 groups = [
-    (SO, 3, SOCharacterDenominatorFree),
-    (SO, 4, SOCharacterDenominatorFree),
-    (SO, 5, SOCharacterDenominatorFree),
-    (SO, 6, SOCharacterDenominatorFree),
-    (SO, 7, SOCharacterDenominatorFree),
-    (SO, 8, SOCharacterDenominatorFree),
-    (SU, 2, SUCharacterDenominatorFree),
-    (SU, 3, SUCharacterDenominatorFree),
-    (SU, 4, SUCharacterDenominatorFree),
-    (SU, 5, SUCharacterDenominatorFree),
-    (SU, 6, SUCharacterDenominatorFree),
+    (SO, 3, SOCharacter),
+    (SO, 4, SOCharacter),
+    (SO, 5, SOCharacter),
+    (SO, 6, SOCharacter),
+    (SO, 7, SOCharacter),
+    (SO, 8, SOCharacter),
+    (SU, 2, SUCharacter),
+    (SU, 3, SUCharacter),
+    (SU, 4, SUCharacter),
+    (SU, 5, SUCharacter),
+    (SU, 6, SUCharacter),
 ]
 
 # the number of representations to be calculated for each group

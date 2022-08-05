@@ -29,8 +29,7 @@ torch.set_printoptions(precision=5, sci_mode=False, linewidth=120, edgeitems=5)
 class TestStiefel(unittest.TestCase):
 
     def setUp(self) -> None:
-        # self.n, self.m = 5, 2
-        self.average_order = 10**3
+        self.average_order = 10 ** 4
         self.space = self.space(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
         self.lengthscale, self.nu = 1.5, 5.0
@@ -64,7 +63,7 @@ class TestStiefel(unittest.TestCase):
         x, y = self.space.rand(2), self.space.rand(2)
         x_yinv = self.space.pairwise_embed(x, y)
         for eigenspace in self.space.lb_eigenspaces:
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             dim_sq_f = f.representation.dimension ** 2
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)

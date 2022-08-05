@@ -73,7 +73,7 @@ class SphereLBEigenspace(LBEigenspaceWithBasis):
         n = self.index
         return n * (self.manifold.dim + n - 1)
 
-    def compute_basis_sum(self):
+    def compute_phase_function(self):
         return ZonalSphericalFunction(self.manifold.dim, self.index)
 
     def compute_basis(self):

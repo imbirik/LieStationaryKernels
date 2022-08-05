@@ -2,7 +2,6 @@ import unittest
 from parameterized import parameterized_class
 import torch
 import numpy as np
-from parameterized import parameterized_class
 from src.spaces.grassmannian import Grassmannian, OrientedGrassmannian
 from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel, RandomPhaseKernel
 from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
@@ -30,7 +29,7 @@ torch.set_printoptions(precision=5, sci_mode=False, linewidth=120, edgeitems=5)
 class TestGrassmannian(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.average_order = 1000
+        self.average_order = 10 ** 4
         self.space = self.space(self.n, self.m, self.order, self.average_order)
         #self.space = Grassmannian(n=self.n, m=self.m, order=self.order, average_order=self.average_order)
 
@@ -77,7 +76,7 @@ class TestGrassmannian(unittest.TestCase):
         y = x
         x_yinv = self.space.pairwise_embed(x, y)
         for eigenspace in self.space.lb_eigenspaces:
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             dim_sq_f = f.representation.dimension ** 2
             cov1 = (f(x_yinv)/dim_sq_f).real
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)

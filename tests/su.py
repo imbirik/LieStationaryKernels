@@ -54,7 +54,7 @@ class TestSU(unittest.TestCase):
         x, y = self.space.rand(2), self.space.rand(2)
         x_yinv = self.space.pairwise_embed(x, y)
         for eigenspace in self.space.lb_eigenspaces:
-            f = eigenspace.basis_sum
+            f = eigenspace.phase_function
             dim_sq_f = f.representation.dimension ** 2
             cov1 = f(x_yinv).view(2, 2)/dim_sq_f
             embed_x, embed_y = self.embed(f, x), self.embed(f, y)
