@@ -297,7 +297,7 @@ class TranslatedCharactersBasis(torch.nn.Module):
         while not gram_is_spd:
             attempts += 1
             self.translations = self.representation.manifold.rand(dim**2)
-            ratios = self.representation.manifold.pairwise_diff(self.translations, self.translations)
+            ratios = self.representation.manifold.pairwise_embed(self.translations, self.translations)
             gram = self.character.forward(ratios).reshape(dim**2, dim**2)
             try:
                 self.coeffs = torch.linalg.inv(torch.linalg.cholesky(gram))
@@ -310,7 +310,7 @@ class TranslatedCharactersBasis(torch.nn.Module):
         x_unsq = x.unsqueeze(1)
         tr_unsq = self.translations.unsqueeze(0)
         x_translates = torch.matmul(tr_unsq, x_unsq)
-        characters = self.character.forward(x_translates)
+        characters = self.character.forward(self.representation.manifold.torus_representative(x_translates))
         return torch.matmul(self.coeffs, characters.T).T
 
 

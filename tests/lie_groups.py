@@ -102,12 +102,12 @@ class TestCompactLieGroups(unittest.TestCase):
                 for batch in range(num_batches):
                     xs = self.group.rand(num_samples)
                     xsb = basis.forward(xs)
-                    sc_prod += torch.einsum('bi,bj->ij', xsb, xsb.conj()) / num_samples
+                    sc_prod += torch.einsum('...i,...j->ij', xsb, xsb.conj()) / num_samples
                     sys.stdout.write('{} {} {}        \r'.format(irrep.index, irrep.dimension, batch))
                     sys.stdout.flush()
                 sc_prod /= num_batches
                 eyes = torch.eye(dim ** 2, dtype=torch.cdouble, device=device)
-                # print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
+                print(irrep.index, dim, round(irrep.lb_eigenvalue, 2), torch.max(torch.abs(sc_prod-eyes)).item())
                 self.assertTrue(torch.allclose(sc_prod, eyes, atol=5e-2))
 
     def test_sampler(self):
