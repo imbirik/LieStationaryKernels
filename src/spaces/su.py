@@ -43,15 +43,25 @@ class SU(CompactLieGroup):
         return x @ y.mH
 
     def rand(self, num=1):
-        h = torch.randn((num, self.n, self.n), dtype=dtype, device=device)
-        q, r = torch.linalg.qr(h)
-        r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
-        r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
-        q *= r_diag_inv_phase[:, None]
-        q_det = torch.det(q)
-        q_det_inv_phase = torch.conj(q_det / torch.abs(q_det))
-        q[:, :, 0] *= q_det_inv_phase[:, None]
-        return q
+        if self.n == 2:
+            sphere_point = torch.randn((num, 4), dtype=torch.double, device=device)
+            sphere_point /= torch.linalg.vector_norm(sphere_point, dim=-1, keepdim=True)
+            a = torch.view_as_complex(sphere_point[..., :2]).unsqueeze(-1)
+            b = torch.view_as_complex(sphere_point[..., 2:]).unsqueeze(-1)
+            r1 = torch.hstack((a, -b.conj())).unsqueeze(-1)
+            r2 = torch.hstack((b, a.conj())).unsqueeze(-1)
+            q = torch.cat((r1, r2), -1)
+            return q
+        else:
+            h = torch.randn((num, self.n, self.n), dtype=dtype, device=device)
+            q, r = torch.linalg.qr(h)
+            r_diag = torch.diagonal(r, dim1=-2, dim2=-1)
+            r_diag_inv_phase = torch.conj(r_diag / torch.abs(r_diag))
+            q *= r_diag_inv_phase[:, None]
+            q_det = torch.det(q)
+            q_det_inv_phase = torch.conj(q_det / torch.abs(q_det))
+            q[:, :, 0] *= q_det_inv_phase[:, None]
+            return q
 
     def generate_signatures(self, order):
         """Generate the signatures of irreducible representations
