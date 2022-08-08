@@ -33,7 +33,7 @@ class SU(CompactLieGroup):
         self.Eigenspace = SULBEigenspace
 
         self.rho = np.arange(self.n - 1, -self.n, -2) * 0.5
-        self.id = torch.eye(self.n, device=device, dtype=dtype)
+        self.id = torch.eye(self.n, device=device, dtype=dtype).view(1, self.n, self.n)
         super().__init__(order=order)
 
     def dist(self, x, y):

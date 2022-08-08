@@ -11,7 +11,8 @@ gpytorch.settings.cholesky_jitter(double=1e-4)
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, kernel, manifold, point_shape=None):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ZeroMean()
+        #self.mean_module = gpytorch.means.ZeroMean()
+        self.mean_module = gpytorch.means.ConstantMean()
         #self.mean = torch.mean(train_y)
         #self.mean = 0
 
@@ -23,9 +24,9 @@ class ExactGPModel(gpytorch.models.ExactGP):
         #self.variance = torch.var(train_y)
 
     def forward(self, x):
-        #mean_x = self.mean_module(x)
+        mean_x = self.mean_module(x)
         #mean_x = torch.ones((x.shape[0],), device=device, dtype=dtype) * self.mean
-        mean_x = torch.zeros((x.shape[0],), device=device, dtype=dtype)
+        #mean_x = torch.zeros((x.shape[0],), device=device, dtype=dtype)
         if self.point_shape is not None:
             data = x.view(*x.shape[:-1], *self.point_shape)
         else:
@@ -74,8 +75,8 @@ def train(model: ExactGPModel, train_x, train_y, training_iter=900, lr_scheduler
                 # variance = (model.variance * model.covar_module.measure.variance).item()
                 variance = model.covar_module.measure.variance.item()
             # mean = model.mean.item()
-            # mean = model.mean_module.constant.item()
-            mean = 0
+            mean = model.mean_module.constant.item()
+            #mean = 0
             print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f variance: %.3f   noise: %.3f, mean: %3f' % (
                 i + 1, training_iter, loss.item(),
                 lengthscale,

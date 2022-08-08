@@ -32,10 +32,11 @@ class Stiefel(HomogeneousSpace, Stiefel_):
         self.n, self.m = n, m
         self.n_m = n - m
         g = SO(self.n, order=order)
-        h = SO(self.n_m, order=0)
+        h = _SO(self.n_m)
         HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Stiefel_.__init__(self, n, m)
-        self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
+        self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype) \
+            .fill_diagonal_(1.0).view((1, self.n, self.m))
 
     def H_to_G(self, h):
         """Embed ortogonal matrix Q in the following way

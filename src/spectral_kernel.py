@@ -57,7 +57,7 @@ class EigenbasisSumKernel(AbstractSpectralKernel):
 class EigenbasisKernel(AbstractSpectralKernel):
     def __init__(self, measure, manifold):
         super().__init__(measure, manifold)
-        point = self.manifold.rand()
+        point = self.manifold.id
         self.normalizer = self.forward(point, point, normalize=False)[0, 0]
 
     def forward(self, x, y=None, normalize=True):

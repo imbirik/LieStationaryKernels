@@ -77,7 +77,7 @@ class RandomPhaseApproximation(torch.nn.Module):
             lmd = eigenspace.lb_eigenvalue
             f = eigenspace.phase_function
             eigen_embedding = f(phase_x_inv).real.view(self.phase_order, x.size()[0]).T
-            eigen_embedding = torch.sqrt(self.kernel.measure.variance[0] * self.kernel.measure(lmd)) * eigen_embedding
+            eigen_embedding = torch.sqrt(torch.abs(self.kernel.measure.variance[0]) * self.kernel.measure(lmd)) * eigen_embedding
             eigen_embedding = eigen_embedding / torch.sqrt(self.kernel.normalizer) / sqrt(self.phase_order)
             embeddings.append(eigen_embedding)
         return torch.cat(embeddings, dim=1)
@@ -110,7 +110,7 @@ class RandomFourierApproximation(torch.nn.Module):
 
     def forward(self, x):  # [N, ...]
         x_ = self.kernel.manifold.to_group(x)
-        embedding = self.kernel.manifold.lb_eigenspaces(x_) * torch.sqrt(self.kernel.measure.variance[0])
+        embedding = self.kernel.manifold.lb_eigenspaces(x_) * torch.sqrt(torch.abs(self.kernel.measure.variance[0]))
         sample_real = torch.einsum('nm,m->n', embedding.real, self.weights_real)
         sample_imag = torch.einsum('nm,m->n', embedding.imag, self.weights_imag)
         sample = (sample_real-sample_imag)/sqrt(self.kernel.normalizer)
@@ -120,4 +120,4 @@ class RandomFourierApproximation(torch.nn.Module):
         x_, y_ = self.kernel.manifold.to_group(x), self.kernel.manifold.to_group(y)
         x_embed, y_embed = self.kernel.manifold.lb_eigenspaces(x_), self.kernel.manifold.lb_eigenspaces(y_)
         # print("max of x_embed:", torch.max(torch.abs(x_embed)))
-        return self.kernel.measure.variance[0] * (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer
+        return torch.abs(self.kernel.measure.variance[0]) * (x_embed @ (torch.conj(y_embed).T)).real/self.kernel.normalizer

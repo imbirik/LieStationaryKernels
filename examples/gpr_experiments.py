@@ -48,7 +48,7 @@ def main(space, n, m):
     #     mean_dist = torch.sum(torch.pow(dists, 4), dim=1)
     #     return mean_dist.real
 
-    n_train, n_test = 50, 100
+    n_train, n_test = 30, 100
     train_x, test_x = space.rand(n_train), space.rand(n_test)
     train_y, test_y = f(train_x), f(test_x)
     train_x, test_x = train_x.reshape(n_train, -1), test_x.reshape(n_test, -1)
@@ -127,5 +127,5 @@ if __name__ == "__main__":
 
     results = pd.DataFrame(results,
             columns=["space", "data_variance", "geometric_mse", "geometric_mll", "euclidean_mse", "euclidean_mll"])
-    results.to_csv("gpr_results_matern52.csv")
+    results.to_csv("gpr_results_matern32.csv")
     print(results)

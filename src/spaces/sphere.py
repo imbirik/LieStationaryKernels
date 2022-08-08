@@ -12,7 +12,7 @@ from spherical_harmonics.spherical_harmonics import num_harmonics
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+pi = 2*torch.acos(torch.zeros(1)).item()
 
 class Sphere(AbstractManifold, Hypersphere):
     """
@@ -32,8 +32,8 @@ class Sphere(AbstractManifold, Hypersphere):
         self.fundamental_system = FundamentalSystemCache(self.n + 1)
         self.lb_eigenspaces = [SphereLBEigenspace(index, manifold=self) for index in range(0, self.order)]
 
-        self.id = torch.zeros((self.n+1,), device=device, dtype=dtype)
-        self.id[0] = 1.0
+        self.id = torch.zeros((self.n+1,), device=device, dtype=dtype).view(1, self.n+1)
+        self.id[0][0] = 1.0
 
     def dist(self, x, y):
         return torch.arccos(torch.dot(x, y))
@@ -55,6 +55,53 @@ class Sphere(AbstractManifold, Hypersphere):
 
     def pairwise_dist(self, x, y):
         return torch.abs(torch.arccos(self.pairwise_embed(x, y))).reshape((x.shape[0], y.shape[0]))
+
+
+class ProjectiveSpace(AbstractManifold, Hypersphere):
+    """
+    S^{dim} sphere, in R^{dim+1}
+    """
+    def __init__(self, n: int, order=10):
+        """
+        :param dim: sphere dimension
+        :param order: the order of approximation, the umber of Laplace-Beltrami eigenspaces under consideration.
+        """
+        self.n = n
+        self.dim = n
+        self.order = order
+        AbstractManifold.__init__(self)
+        Hypersphere.__init__(self, self.n)
+
+        self.fundamental_system = FundamentalSystemCache(self.n + 1)
+        self.lb_eigenspaces = [SphereLBEigenspace(2*index, manifold=self) for index in range(0, self.order)]
+
+        self.id = torch.zeros((self.n+1,), device=device, dtype=dtype).view(1, self.n+1)
+        self.id[0][0] = 1.0
+
+    def dist(self, x, y):
+        great_circle_dist = torch.arccos(torch.clip(torch.dot(x, y), -1, 1))
+        dist = torch.min(great_circle_dist, pi-great_circle_dist)
+        return dist
+
+    def rand(self, n=1):
+        if n == 0:
+            return None
+        x = torch.randn(n, self.n + 1, dtype=dtype, device=device)
+        x = x / torch.norm(x, dim=1, keepdim=True)
+        return x
+
+    def pairwise_embed(self, x, y):
+        # x -- [n,d+1]
+        # y -- [m, d+1]
+        x_, y_ = cartesian_prod(x, y)
+        x_flatten = torch.reshape(x_, (-1, self.n+1))
+        y_flatten = torch.reshape(y_, (-1, self.n+1))
+        return vmap(torch.dot)(x_flatten, y_flatten)
+
+    def pairwise_dist(self, x, y):
+        x_dot_y = torch.clip(self.pairwise_embed(x, y), -1.0, 1.0)
+        x_y_ = torch.arccos(x_dot_y)
+        return torch.min(x_y_, pi-x_y_).reshape((x.shape[0], y.shape[0]))
 
 
 class SphereLBEigenspace(LBEigenspaceWithBasis):
