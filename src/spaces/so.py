@@ -18,7 +18,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class SO(CompactLieGroup):
     """
-    SO(n), special orthogonal group of degree dim.
+    SO(n), special orthogonal group of degree `n`.
     """
     def __init__(self, n: int, order=20):
         """
