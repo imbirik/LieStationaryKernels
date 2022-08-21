@@ -8,28 +8,13 @@ from src.utils import cartesian_prod
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class _SO:
-    """Helper class for sampling"""
-    def __init__(self, n):
-        self.n = n
-        self.dim = n*(n-1)//2
-
-    def rand(self, n=1):
-        h = torch.randn((n, self.n, self.n), device=device, dtype=dtype)
-        q, r = torch.linalg.qr(h)
-        r_diag_sign = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
-        q *= r_diag_sign[:, None]
-        q_det_sign = torch.sign(torch.det(q))
-        q[:, :, 0] *= q_det_sign[:, None]
-        return q
-
 
 class _SOxSO:
     """Helper class for sampling, represents SO(n) x SO(m)"""
     def __init__(self, n, m):
         self.n, self.m = n, m
-        self.so_n = _SO(n)
-        self.so_m = _SO(m)
+        self.so_n = SO(n, order=0)
+        self.so_m = SO(m, order=0)
         self.dim = n*(n-1)//2 + m*(m-1)//2
 
     def rand(self, n=1):
@@ -45,8 +30,8 @@ class _S_OxO:
     """Helper class for sampling, represents S( O(n) x O(m) )"""
     def __init__(self, n, m):
         self.n, self.m = n, m
-        self.so_n = _SO(n)
-        self.so_m = _SO(m)
+        self.so_n = SO(n, order=0)
+        self.so_m = SO(m, order=0)
         self.dim = n*(n-1)//2 + m*(m-1)//2 -1
 
     def block_diag(self, h_u, h_d):
@@ -70,8 +55,8 @@ class _S_OxO:
         return res
 
 class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
-    """Class for oriented Grassmannian manifold represented as SO(n)/SO(m)xSO(n-m)"""
-    """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
+    """Class for oriented Grassmannian manifold represented as SO(n)/SO(m)xSO(n-m).
+    Elements are represented as orthonormal frames of size m i.e. matrices nxm."""
     def __init__(self, n, m, order=10, average_order=50):
         assert n > m, "n should be greater than m"
         self.n, self.m = n, m
