@@ -18,6 +18,43 @@ The following spaces are implemented:
 ## Showcase
 
 Alas, it's only the code for now...
+```
+# Some imports
+import torch
+from src.spaces import Grassmanian
+from src.spectral_kernel import RandomPhaseKernel
+from src.spectral_measure import MaternSpectralMeasure
+from src.prior_approximation import RandomPhaseApproximation
+
+# First of all let us choose a space
+space = Grassmanian(n, m)
+# Then select a spectral measure
+measure = MaternSpectralMeasure(space.dim, lengthscale, nu, variance)
+# Finally we create kernel and sampler
+kernel = RandomPhaseKernel(measure, space)
+sampler = RandomPhaseApproximation(kernel, phase_order)
+# Create two sets of random points
+x = space.rand(10)
+y = space.rand(20)
+# Then
+Cov = kernel(x,y) # is 10x20 matrix --- covariance matrix 
+sample = sampler(x) # is 10x1 vector --- random realization at x.
+```
+
+### Correspondence between spaces and kernels/samplers
+Kernels:
+
+1. With ```EigenSumKernel``` the covariance is computed precisely, but works only for ```CompactLieGroup```. 
+
+2. With ```RandomPhaseKernel``` the covariance is computed using low-rank approximation, it is suitable for ```ompactHomogeneousSpace``` and ```CompactLieGroup```.
+
+3. With ```RandomFourierKernel``` the covariance is computed using low-rank approximation, it is suitable for ```NonCompactSymmetricSpace```
+
+Samplers:
+
+1. ```RandomPhaseApproximation``` is used in compact case (```CompactHomogeneousSpace```, ```CompactLieGroup```)
+
+2. ```RandomFourierApproximation``` is used in non-compact case (```NonCompactSymmetricSpace```)
 
 ## Installation and dependencies
 
