@@ -3,8 +3,8 @@
 `LieGeomKernel` is a library that implements calculations with heat and Matérn kernels
 on compact Lie groups and their homogeneous spaces as well as non-compact symmetric spaces.
 
-This is a prototypical implementation for the methods described in `Stationary Kernels and Gaussian Processes on Lie Groups
-and their Homogeneous Spaces`, a two-part paper by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.
+This is a prototypical implementation for the methods described in [`Stationary Kernels and Gaussian Processes on Lie Groups
+and their Homogeneous Spaces`, a two-part paper by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.](link)
 
 ## Spaces of interest
 The following spaces are implemented:
@@ -59,3 +59,13 @@ Samplers:
 ## Installation and dependencies
 
 Under construction...
+
+0. [Optionally] Create virtual environment.
+
+1. Install [PyTorch](https://pytorch.org/get-started/locally/) and [GPyTorch](https://gpytorch.ai/).
+
+2. [Optionally] To use sphere and projective space install [SphericalHarmonics](https://github.com/vdutor/SphericalHarmonics) following the instruction instruction.
+
+3. Install the library by running
+
+```pip install git+https://github.com/imbirik/LieGeomKernel.git```
