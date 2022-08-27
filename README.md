@@ -70,7 +70,7 @@ Samplers:
 pip install git+https://github.com/imbirik/LieGeomKernel.git
 ```
 
-5. To install in developer mode, clone the repository, enter it and run
+5. To install in developer mode, clone the repository, enter its directory and run
 ```
 pip install -e ./
 ```
