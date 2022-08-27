@@ -1,10 +1,10 @@
-# LieGeomKernel
+## Stationary Kernels and Gaussian Processes on Lie Groups and their Homogeneous Spaces
 
-`LieGeomKernel` is a library that implements calculations with heat and Matérn kernels
+`LieStationaryKernels` is a library that implements calculations with heat and Matérn kernels
 on compact Lie groups and their homogeneous spaces as well as non-compact symmetric spaces.
 
-This is a prototypical implementation for the methods described in [`Stationary Kernels and Gaussian Processes on Lie Groups
-and their Homogeneous Spaces`, a two-part paper by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.](link)
+This is a prototypical implementation for the methods described in `Stationary Kernels and Gaussian Processes on Lie Groups
+and their Homogeneous Spaces`([part I](link), [part II](link)), a two-part paper by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.
 
 ## Spaces of interest
 The following spaces are implemented:
