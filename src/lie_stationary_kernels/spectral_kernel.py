@@ -4,8 +4,8 @@ import torch
 import math
 from itertools import islice
 
-from lie_geom_kernel.spectral_measure import AbstractSpectralMeasure
-from lie_geom_kernel.space import AbstractManifold
+from lie_stationary_kernels.spectral_measure import AbstractSpectralMeasure
+from lie_stationary_kernels.space import AbstractManifold
 from gpytorch.lazy import NonLazyTensor, MatmulLazyTensor
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

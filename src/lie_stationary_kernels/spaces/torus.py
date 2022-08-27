@@ -1,8 +1,8 @@
 import torch
-from lie_geom_kernel.space import CompactLieGroup, LBEigenspaceWithPhaseFunction, LieGroupCharacter
+from lie_stationary_kernels.space import CompactLieGroup, LBEigenspaceWithPhaseFunction, LieGroupCharacter
 import math
 import itertools
-from lie_geom_kernel.utils import cartesian_prod
+from lie_stationary_kernels.utils import cartesian_prod
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

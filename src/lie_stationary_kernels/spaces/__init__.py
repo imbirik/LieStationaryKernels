@@ -1,0 +1,8 @@
+from lie_stationary_kernels.spaces.so import SO
+from lie_stationary_kernels.spaces.su import SU
+from lie_stationary_kernels.spaces.torus import Torus
+from lie_stationary_kernels.spaces.sphere import Sphere, ProjectiveSpace
+from lie_stationary_kernels.spaces.stiefel import Stiefel
+from lie_stationary_kernels.spaces.grassmannian import Grassmannian, OrientedGrassmannian
+from lie_stationary_kernels.spaces.hyperbolic import HyperbolicSpace
+from lie_stationary_kernels.spaces.spd import SymmetricPositiveDefiniteMatrices

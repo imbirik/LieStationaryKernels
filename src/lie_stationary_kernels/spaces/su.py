@@ -1,12 +1,12 @@
 import torch
 import numpy as np
-from lie_geom_kernel.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
+from lie_stationary_kernels.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
 from functools import reduce
 import operator
 import math
 import itertools
 import more_itertools
-from lie_geom_kernel.utils import partition_dominance_cone
+from lie_stationary_kernels.utils import partition_dominance_cone
 import sympy
 from sympy.matrices.determinant import _det as sp_det
 import json

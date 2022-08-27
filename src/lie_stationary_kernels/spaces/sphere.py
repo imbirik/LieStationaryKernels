@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from scipy.special import loggamma
 
-from lie_geom_kernel.utils import cartesian_prod
-from lie_geom_kernel.space import AbstractManifold, LBEigenspaceWithBasis
+from lie_stationary_kernels.utils import cartesian_prod
+from lie_stationary_kernels.space import AbstractManifold, LBEigenspaceWithBasis
 from geomstats.geometry.hypersphere import Hypersphere
 from torch.autograd.functional import _vmap as vmap
 from spherical_harmonics.spherical_harmonics import SphericalHarmonicsLevel

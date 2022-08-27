@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-from lie_geom_kernel.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
-from lie_geom_kernel.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
+from lie_stationary_kernels.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
+from lie_stationary_kernels.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
 from functools import reduce
 import operator
 import math

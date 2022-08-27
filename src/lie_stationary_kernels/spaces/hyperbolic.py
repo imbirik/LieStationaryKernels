@@ -1,7 +1,7 @@
 import torch
-from lie_geom_kernel.space import NonCompactSymmetricSpace
-from lie_geom_kernel.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
-from lie_geom_kernel.utils import cartesian_prod
+from lie_stationary_kernels.space import NonCompactSymmetricSpace
+from lie_stationary_kernels.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
+from lie_stationary_kernels.utils import cartesian_prod
 from math import sqrt
 from torch.distributions import Normal, StudentT
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

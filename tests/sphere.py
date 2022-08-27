@@ -3,10 +3,10 @@ import torch
 from torch.autograd.functional import _vmap as vmap
 
 import numpy as np
-from lie_geom_kernel.spaces.sphere import Sphere
-from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
-from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
-from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
+from lie_stationary_kernels.spaces.sphere import Sphere
+from lie_stationary_kernels.spectral_kernel import EigenbasisSumKernel
+from lie_stationary_kernels.spectral_measure import SqExpSpectralMeasure
+from lie_stationary_kernels.prior_approximation import RandomPhaseApproximation
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 dtype = torch.float64

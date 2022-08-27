@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lie_geom_kernel"
+name = "lie_stationary_kernels"
 version = "0.1"
 description = "Heat and Matern kernels on Lie groups and their homogeneous spaces"
 readme = "README.md"

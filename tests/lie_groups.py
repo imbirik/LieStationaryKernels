@@ -6,13 +6,13 @@ import torch
 from torch.autograd.functional import _vmap as vmap
 import numpy as np
 
-from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
-from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
-from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
+from lie_stationary_kernels.spectral_kernel import EigenbasisSumKernel
+from lie_stationary_kernels.spectral_measure import SqExpSpectralMeasure
+from lie_stationary_kernels.prior_approximation import RandomPhaseApproximation
 
-from lie_geom_kernel.space import TranslatedCharactersBasis
+from lie_stationary_kernels.space import TranslatedCharactersBasis
 
-from lie_geom_kernel.spaces import SO, SU
+from lie_stationary_kernels.spaces import SO, SU
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

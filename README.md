@@ -22,10 +22,10 @@ Alas, it's only the code for now...
 ```python
 # Some imports
 import torch
-from lie_geom_kernel.spaces import Grassmanian
-from lie_geom_kernel.spectral_kernel import RandomPhaseKernel
-from lie_geom_kernel.spectral_measure import MaternSpectralMeasure
-from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
+from lie_stationary_kernels.spaces import Grassmanian
+from lie_stationary_kernels.spectral_kernel import RandomPhaseKernel
+from lie_stationary_kernels.spectral_measure import MaternSpectralMeasure
+from lie_stationary_kernels.prior_approximation import RandomPhaseApproximation
 
 # First of all let us choose a space
 space = Grassmanian(n, m)
@@ -67,7 +67,7 @@ Samplers:
 
 4. Install the library by running
 ```
-pip install git+https://github.com/imbirik/LieGeomKernel.git
+pip install git+https://github.com/imbirik/LieStationaryKernel.git
 ```
 
 5. To install in developer mode, clone the repository, enter its directory and run
