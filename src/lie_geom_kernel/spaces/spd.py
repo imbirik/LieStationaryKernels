@@ -1,9 +1,7 @@
 import torch
-import numpy as np
-from src.space import NonCompactSymmetricSpace, NonCompactSymmetricSpaceExp
-from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
-from src.utils import GOE_sampler, triu_ind
-from src.utils import cartesian_prod
+from lie_geom_kernel.space import NonCompactSymmetricSpace, NonCompactSymmetricSpaceExp
+from lie_geom_kernel.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
+from lie_geom_kernel.utils import GOE_sampler, triu_ind, cartesian_prod
 from math import factorial
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

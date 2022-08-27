@@ -1,17 +1,8 @@
 import torch
-import numpy as np
-from src.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
-from src.space import CompactLieGroup, LBEigenspaceWithPhaseFunction, LieGroupCharacter
-from functools import reduce
-import operator
+from lie_geom_kernel.space import CompactLieGroup, LBEigenspaceWithPhaseFunction, LieGroupCharacter
 import math
 import itertools
-import more_itertools
-import sympy
-from sympy.matrices.determinant import _det as sp_det
-import json
-from pathlib import Path
-from src.utils import cartesian_prod
+from lie_geom_kernel.utils import cartesian_prod
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -93,10 +84,6 @@ class TorusLBEigenspace(LBEigenspaceWithPhaseFunction):
 
     def compute_basis_sum(self):
         return TorusCharacter(representation=self)
-        # if self.manifold.n == 3:
-        #     return SO3Character(representation=self)
-        # else:
-        #     return SOCharacter(representation=self)
 
 
 class TorusCharacter(LieGroupCharacter):

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-from src.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
-from src.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
+from lie_geom_kernel.utils import fixed_length_partitions, partition_dominance_or_subpartition_cone
+from lie_geom_kernel.space import CompactLieGroup, LBEigenspaceWithBasis, LieGroupCharacter, TranslatedCharactersBasis
 from functools import reduce
 import operator
 import math
@@ -64,9 +64,9 @@ class SO(CompactLieGroup):
             thetas = 2 * math.pi * torch.rand((num, 1), dtype=dtype, device=device)
             c = torch.cos(thetas)
             s = torch.sin(thetas)
-            r1 = torch.hstack((c, s))
-            r2 = torch.hstack((-s, c))
-            q = torch.vstack((r1, r2))
+            r1 = torch.hstack((c, s)).unsqueeze(-2)
+            r2 = torch.hstack((-s, c)).unsqueeze(-2)
+            q = torch.cat((r1, r2), dim=-2)
             return q
         else:
             h = torch.randn((num, self.n, self.n), device=device, dtype=dtype)

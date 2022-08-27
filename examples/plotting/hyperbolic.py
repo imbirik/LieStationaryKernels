@@ -4,7 +4,7 @@ import torch
 from src.spaces.hyperbolic import HyperbolicSpace
 from src.spectral_kernel import RandomSpectralKernel
 from src.prior_approximation import RandomFourierApproximation
-from src.spectral_measure import SqExpSpectralMeasure
+from src.lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
 import matplotlib.pyplot as plt
 import numpy as np
 import os

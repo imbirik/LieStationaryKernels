@@ -1,8 +1,8 @@
 import torch
-from src.spaces.so import SO
-from src.space import HomogeneousSpace
+from lie_geom_kernel.spaces.so import SO
+from lie_geom_kernel.space import HomogeneousSpace
 from geomstats.geometry.grassmannian import Grassmannian as Grassmannian_
-from src.utils import cartesian_prod
+from lie_geom_kernel.utils import cartesian_prod
 
 
 dtype = torch.float64
@@ -22,7 +22,7 @@ class _SOxSO:
         h_d = self.so_m.rand(n)
         zeros = torch.zeros((n, self.n, self.m), device=device, dtype=dtype)
         zeros_t = torch.transpose(zeros, dim0=-1, dim1=-2)
-        l, r = torch.cat((h_u, zeros_t), dim=1), torch.cat((zeros, h_d), dim=-2)
+        l, r = torch.cat((h_u, zeros_t), dim=-2), torch.cat((zeros, h_d), dim=-2)
         res = torch.cat((l, r), dim=-1)
         return res
 
@@ -32,12 +32,12 @@ class _S_OxO:
         self.n, self.m = n, m
         self.so_n = SO(n, order=0)
         self.so_m = SO(m, order=0)
-        self.dim = n*(n-1)//2 + m*(m-1)//2 -1
+        self.dim = n*(n-1)//2 + m*(m-1)//2 - 1
 
     def block_diag(self, h_u, h_d):
         zeros = torch.zeros((h_u.shape[0], self.n, self.m), device=device, dtype=dtype)
         zeros_t = torch.transpose(zeros, dim0=-1, dim1=-2)
-        l, r = torch.cat((h_u, zeros_t), dim=1), torch.cat((zeros, h_d), dim=-2)
+        l, r = torch.cat((h_u, zeros_t), dim=-2), torch.cat((zeros, h_d), dim=-2)
         concatenated = torch.cat((l, r), dim=-1)
         return concatenated
 

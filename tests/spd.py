@@ -4,10 +4,10 @@ import torch
 import numpy as np
 import scipy
 from scipy import integrate
-from src.spaces.spd import SymmetricPositiveDefiniteMatrices, SPDShiftExp
-from src.spectral_kernel import RandomSpectralKernel
-from src.prior_approximation import RandomFourierApproximation
-from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
+from lie_geom_kernel.spaces.spd import SymmetricPositiveDefiniteMatrices, SPDShiftExp
+from lie_geom_kernel.spectral_kernel import RandomSpectralKernel
+from lie_geom_kernel.prior_approximation import RandomFourierApproximation
+from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 dtype = torch.float64

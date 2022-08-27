@@ -4,10 +4,9 @@ import torch
 from src.spaces import Torus
 from src.spectral_kernel import EigenbasisSumKernel
 from src.prior_approximation import RandomPhaseApproximation
-from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
+from src.lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import os
 from tqdm import tqdm
 from examples.plotting.drawing_utils import save_points

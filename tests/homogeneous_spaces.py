@@ -2,11 +2,12 @@ import unittest
 from parameterized import parameterized_class
 import torch
 import numpy as np
-from src.spaces.stiefel import Stiefel
-from src.spaces.grassmannian import Grassmannian, OrientedGrassmannian
-from src.spectral_kernel import EigenbasisSumKernel
-from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
-from src.prior_approximation import RandomPhaseApproximation
+
+from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
+from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
+from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
+
+from lie_geom_kernel.spaces import Stiefel, Grassmannian, OrientedGrassmannian
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

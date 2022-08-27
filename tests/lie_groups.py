@@ -1,23 +1,18 @@
 import sys
-
 import itertools
-
 import unittest
 from parameterized import parameterized_class
 import torch
-#from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 import numpy as np
 
-from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
-from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
-from src.prior_approximation import RandomPhaseApproximation
-from src.utils import cartesian_prod
+from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
+from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
+from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
 
-from src.space import TranslatedCharactersBasis
+from lie_geom_kernel.space import TranslatedCharactersBasis
 
-from src.spaces.so import SO
-from src.spaces.su import SU
+from lie_geom_kernel.spaces import SO, SU
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

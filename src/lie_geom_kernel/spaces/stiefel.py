@@ -1,8 +1,8 @@
 import torch
-from src.spaces.so import SO
-from src.space import HomogeneousSpace
+from lie_geom_kernel.spaces.so import SO
+from lie_geom_kernel.space import HomogeneousSpace
 from geomstats.geometry.stiefel import Stiefel as Stiefel_
-from src.utils import hook_content_formula
+from lie_geom_kernel.utils import hook_content_formula
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

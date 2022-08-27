@@ -5,7 +5,7 @@ import gpytorch
 from src.spaces import ProjectiveSpace
 from src.spectral_kernel import EigenbasisSumKernel
 from src.prior_approximation import RandomPhaseApproximation
-from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
+from src.lie_geom_kernel.spectral_measure import MaternSpectralMeasure
 import matplotlib.pyplot as plt
 import numpy as np
 import os

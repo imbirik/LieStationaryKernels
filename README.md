@@ -18,13 +18,14 @@ The following spaces are implemented:
 ## Showcase
 
 Alas, it's only the code for now...
-```
+
+```python
 # Some imports
 import torch
-from src.spaces import Grassmanian
-from src.spectral_kernel import RandomPhaseKernel
-from src.spectral_measure import MaternSpectralMeasure
-from src.prior_approximation import RandomPhaseApproximation
+from lie_geom_kernel.spaces import Grassmanian
+from lie_geom_kernel.spectral_kernel import RandomPhaseKernel
+from lie_geom_kernel.spectral_measure import MaternSpectralMeasure
+from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
 
 # First of all let us choose a space
 space = Grassmanian(n, m)
@@ -38,7 +39,7 @@ x = space.rand(10)
 y = space.rand(20)
 # Then
 Cov = kernel(x,y) # is 10x20 matrix --- covariance matrix 
-sample = sampler(x) # is 10x1 vector --- random realization at x.
+sample = sampler(x) # is 10x1 vector --- random realization at x
 ```
 
 ### Correspondence between spaces and kernels/samplers
@@ -58,14 +59,19 @@ Samplers:
 
 ## Installation and dependencies
 
-Under construction...
+1. [Optionally] Create virtual environment.
 
-0. [Optionally] Create virtual environment.
+2. Install [PyTorch](https://pytorch.org/get-started/locally/).
 
-1. Install [PyTorch](https://pytorch.org/get-started/locally/) and [GPyTorch](https://gpytorch.ai/).
+3. [Optionally] To use sphere and projective space install [SphericalHarmonics](https://github.com/vdutor/SphericalHarmonics) following the instruction.
 
-2. [Optionally] To use sphere and projective space install [SphericalHarmonics](https://github.com/vdutor/SphericalHarmonics) following the instruction instruction.
+4. Install the library by running
+```
+pip install git+https://github.com/imbirik/LieGeomKernel.git
+```
 
-3. Install the library by running
+5. To install in developer mode, clone the repository, enter it and run
+```
+pip install -e ./
+```
 
-```pip install git+https://github.com/imbirik/LieGeomKernel.git```

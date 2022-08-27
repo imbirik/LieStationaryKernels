@@ -1,12 +1,10 @@
-import lab as B
 import numpy as np
 import torch
 import unittest
 import geometric_kernels.torch  # noqa
-from src.spaces.sphere import Sphere
-from src.spaces.so import SO
-from src.spectral_measure import SqExpSpectralMeasure
-from src.spectral_kernel import EigenbasisSumKernel
+from lie_geom_kernel.spaces.sphere import Sphere
+from lie_geom_kernel.lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
+from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
 from geometric_kernels.utils.manifold_utils import manifold_laplacian
 
 _TRUNCATION_LEVEL = 15

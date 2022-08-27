@@ -1,9 +1,9 @@
 import unittest
 import torch
-from src.spaces.hyperbolic import HyperbolicSpace, HypShiftExp
-from src.spectral_kernel import RandomSpectralKernel, RandomFourierFeatureKernel
-from src.prior_approximation import RandomFourierApproximation
-from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
+from lie_geom_kernel.spaces.hyperbolic import HyperbolicSpace, HypShiftExp
+from lie_geom_kernel.spectral_kernel import RandomSpectralKernel, RandomFourierFeatureKernel
+from lie_geom_kernel.prior_approximation import RandomFourierApproximation
+from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
 
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

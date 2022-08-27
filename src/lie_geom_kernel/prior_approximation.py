@@ -2,7 +2,7 @@ import torch
 import warnings
 from itertools import islice
 from math import sqrt
-from src.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomSpectralKernel
+from lie_geom_kernel.spectral_kernel import EigenbasisKernel, EigenbasisSumKernel, RandomSpectralKernel
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dtype = torch.float64

@@ -1,13 +1,12 @@
 import unittest
 import torch
-#from functorch import vmap
 from torch.autograd.functional import _vmap as vmap
 
 import numpy as np
-from src.spaces.sphere import Sphere
-from src.spectral_kernel import EigenbasisSumKernel, EigenbasisKernel
-from src.spectral_measure import SqExpSpectralMeasure, MaternSpectralMeasure
-from src.prior_approximation import RandomPhaseApproximation
+from lie_geom_kernel.spaces.sphere import Sphere
+from lie_geom_kernel.spectral_kernel import EigenbasisSumKernel
+from lie_geom_kernel.spectral_measure import SqExpSpectralMeasure
+from lie_geom_kernel.prior_approximation import RandomPhaseApproximation
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 dtype = torch.float64

@@ -1,7 +1,7 @@
 import torch
 from abc import ABC, abstractmethod
-from src.utils import lazy_property
-from src.utils import cartesian_prod
+from lie_geom_kernel.utils import lazy_property
+from lie_geom_kernel.utils import cartesian_prod
 import math
 import operator
 import warnings

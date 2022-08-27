@@ -1,10 +1,10 @@
 #%%
 
-from src.spaces import Grassmannian, OrientedGrassmannian, HyperbolicSpace, SO, \
-    SymmetricPositiveDefiniteMatrices, Sphere, Stiefel, SU
-from src.spectral_kernel import RandomSpectralKernel, EigenbasisSumKernel, RandomFourierFeatureKernel, RandomPhaseKernel
+from src.spaces import Grassmannian, HyperbolicSpace, SO, \
+    SymmetricPositiveDefiniteMatrices, Sphere, SU
+from src.spectral_kernel import EigenbasisSumKernel, RandomFourierFeatureKernel, RandomPhaseKernel
 from src.prior_approximation import RandomPhaseApproximation, RandomFourierApproximation
-from src.spectral_measure import MaternSpectralMeasure, SqExpSpectralMeasure
+from src.lie_geom_kernel.spectral_measure import MaternSpectralMeasure
 from src.space import CompactLieGroup, HomogeneousSpace
 from examples.gpr_model import ExactGPModel, train
 from torch.nn import MSELoss
@@ -12,7 +12,7 @@ import gpytorch
 import torch
 import sys
 import pandas as pd
-import os
+
 #%%
 sys.setrecursionlimit(2000)
 #os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
