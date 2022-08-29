@@ -1,6 +1,6 @@
 import torch
 from lie_stationary_kernels.spaces.so import SO
-from lie_stationary_kernels.space import HomogeneousSpace
+from lie_stationary_kernels.space import CompactHomogeneousSpace
 from geomstats.geometry.grassmannian import Grassmannian as Grassmannian_
 from lie_stationary_kernels.utils import cartesian_prod
 
@@ -54,7 +54,7 @@ class _S_OxO:
         res = torch.cat((res_1, res_2), dim=0)
         return res
 
-class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
+class OrientedGrassmannian(CompactHomogeneousSpace, Grassmannian_):
     """Class for oriented Grassmannian manifold represented as SO(n)/SO(m)xSO(n-m).
     Elements are represented as orthonormal frames of size m i.e. matrices nxm."""
     def __init__(self, n, m, order=10, average_order=50):
@@ -63,7 +63,7 @@ class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
         self.n_m = n - m
         g = SO(n, order=order)
         h = _SOxSO(self.m, self.n_m)
-        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
+        CompactHomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype)\
             .fill_diagonal_(1.0).view((1, self.n, self.m))
@@ -100,7 +100,7 @@ class OrientedGrassmannian(HomogeneousSpace, Grassmannian_):
         return 1
 
 
-class Grassmannian(HomogeneousSpace, Grassmannian_):
+class Grassmannian(CompactHomogeneousSpace, Grassmannian_):
     """Class for Grassmannian manifold represented as SO(n)/S(O(m)xO(n-m))"""
     """Elements represented as orthonormal frames of size m i.e. matrices nxm"""
     def __init__(self, n, m, order=10, average_order=30):
@@ -109,7 +109,7 @@ class Grassmannian(HomogeneousSpace, Grassmannian_):
         self.n_m = n - m
         g = SO(n, order=order)
         h = _S_OxO(self.m, self.n_m)
-        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
+        CompactHomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Grassmannian_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype).fill_diagonal_(1.0)
         self.id = self.id.view((1, self.n, self.m))

@@ -1,6 +1,6 @@
 import torch
 from lie_stationary_kernels.spaces.so import SO
-from lie_stationary_kernels.space import HomogeneousSpace
+from lie_stationary_kernels.space import CompactHomogeneousSpace
 from geomstats.geometry.stiefel import Stiefel as Stiefel_
 from lie_stationary_kernels.utils import hook_content_formula
 
@@ -24,7 +24,7 @@ class _SO:
         return q
 
 
-class Stiefel(HomogeneousSpace, Stiefel_):
+class Stiefel(CompactHomogeneousSpace, Stiefel_):
     """Class for Stiefel manifold represented as SO(n)/SO(m)"""
     """Elements represented as orthonormal frames"""
     def __init__(self, n, m, order=10, average_order=30):
@@ -33,7 +33,7 @@ class Stiefel(HomogeneousSpace, Stiefel_):
         self.n_m = n - m
         g = SO(self.n, order=order)
         h = _SO(self.n_m)
-        HomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
+        CompactHomogeneousSpace.__init__(self, g=g, h=h, average_order=average_order)
         Stiefel_.__init__(self, n, m)
         self.id = torch.zeros((self.n, self.m), device=device, dtype=dtype) \
             .fill_diagonal_(1.0).view((1, self.n, self.m))

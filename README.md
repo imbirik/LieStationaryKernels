@@ -47,9 +47,9 @@ Kernels:
 
 1. With ```EigenSumKernel``` the covariance is computed precisely, but works only for ```CompactLieGroup```. 
 
-2. With ```RandomPhaseKernel``` the covariance is computed using low-rank approximation, it is suitable for ```ompactHomogeneousSpace``` and ```CompactLieGroup```.
+2. With ```RandomPhaseKernel``` the covariance is computed using low-rank approximation, it is suitable for ```CompactLieGroup``` and ```СompactHomogeneousSpace```.
 
-3. With ```RandomFourierKernel``` the covariance is computed using low-rank approximation, it is suitable for ```NonCompactSymmetricSpace```
+3. With ```RandomFourierKernel``` the covariance is computed using low-rank approximation, it is suitable for ```NonCompactSymmetricSpace```.
 
 Samplers:
 

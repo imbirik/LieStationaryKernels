@@ -85,7 +85,7 @@ class CompactLieGroup(AbstractManifold, ABC):
         return x_y_gammas
 
 
-class HomogeneousSpace(AbstractManifold, ABC):
+class CompactHomogeneousSpace(AbstractManifold, ABC):
     """Homogeneous space of form M=G/H"""
     def __init__(self, g: CompactLieGroup, h, average_order):
         # H is not typed to CompactLieGroup because it is often given as an incomplete realization
@@ -221,7 +221,7 @@ class LBEigenspaceWithBasis(LBEigenspaceWithPhaseFunction, ABC):
 class AveragedLBEigenspace(LBEigenspaceWithPhaseFunction):
     """The Laplace-Beltrami eigenspace for homogeneous space of a compact Lie group,
     with the `phase function` calculated via averaging the character"""
-    def __init__(self, representation: LBEigenspaceWithPhaseFunction, manifold: HomogeneousSpace):
+    def __init__(self, representation: LBEigenspaceWithPhaseFunction, manifold: CompactHomogeneousSpace):
         """
         :param signature: the signature of a representation
         :param manifold: the "parent" manifold, an instance of SO
@@ -264,7 +264,7 @@ class LieGroupCharacter(torch.nn.Module, ABC):
 
 class AveragedLieGroupCharacter(torch.nn.Module):
     """Lie group character averaged over a subgroup"""
-    def __init__(self, representation: AveragedLBEigenspace, space: HomogeneousSpace, chi: LieGroupCharacter):
+    def __init__(self, representation: AveragedLBEigenspace, space: CompactHomogeneousSpace, chi: LieGroupCharacter):
         super().__init__()
         self.representation = representation
         self.space = space
