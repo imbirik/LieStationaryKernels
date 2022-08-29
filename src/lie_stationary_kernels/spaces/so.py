@@ -61,12 +61,34 @@ class SO(CompactLieGroup):
 
     def rand(self, num=1):
         if self.n == 2:
+            # SO(2) = S^1
             thetas = 2 * math.pi * torch.rand((num, 1), dtype=dtype, device=device)
             c = torch.cos(thetas)
             s = torch.sin(thetas)
             r1 = torch.hstack((c, s)).unsqueeze(-2)
             r2 = torch.hstack((-s, c)).unsqueeze(-2)
             q = torch.cat((r1, r2), dim=-2)
+            return q
+        elif self.n == 3:
+            # explicit parametrization via the double cover SU(2) = S^3
+            sphere_point = torch.randn((num, 4), dtype=torch.double, device=device)
+            sphere_point /= torch.linalg.vector_norm(sphere_point, dim=-1, keepdim=True)
+            x, y, z, w = (sphere_point[..., i].unsqueeze(-1) for i in range(4))
+            xx = x ** 2
+            yy = y ** 2
+            zz = z ** 2
+            xy = x * y
+            xz = x * z
+            xw = x * w
+            yz = y * z
+            yw = y * w
+            zw = z * w
+            del sphere_point, x, y, z, w
+            r1 = torch.hstack((1-2*(yy+zz), 2*(xy-zw), 2*(xz+yw))).unsqueeze(-1)
+            r2 = torch.hstack((2*(xy+zw), 1-2*(xx+zz), 2*(yz-xw))).unsqueeze(-1)
+            r3 = torch.hstack((2*(xz-yw), 2*(yz+xw), 1-2*(xx+yy))).unsqueeze(-1)
+            del xx, yy, zz, xy, xz, xw, yz, yw, zw
+            q = torch.cat((r1, r2, r3), -1)
             return q
         else:
             h = torch.randn((num, self.n, self.n), device=device, dtype=dtype)
