@@ -20,8 +20,6 @@ The following spaces are implemented:
 Alas, it's only the code for now...
 
 ```python
-# Some imports
-import torch
 from lie_stationary_kernels.spaces import Grassmanian
 from lie_stationary_kernels.spectral_kernel import RandomPhaseKernel
 from lie_stationary_kernels.spectral_measure import MaternSpectralMeasure
@@ -38,7 +36,7 @@ sampler = RandomPhaseApproximation(kernel, phase_order)
 x = space.rand(10)
 y = space.rand(20)
 # Then
-Cov = kernel(x,y) # is 10x20 matrix --- covariance matrix 
+cov = kernel(x,y) # is 10x20 matrix --- covariance matrix 
 sample = sampler(x) # is 10x1 vector --- random realization at x
 ```
 
