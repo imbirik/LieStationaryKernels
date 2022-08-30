@@ -82,7 +82,7 @@ class TorusLBEigenspace(LBEigenspaceWithPhaseFunction):
     def compute_lb_eigenvalue(self):
         return 4*math.pi*math.pi*sum([x**2 for x in self.index])
 
-    def compute_basis_sum(self):
+    def compute_phase_function(self):
         return TorusCharacter(representation=self)
 
 
