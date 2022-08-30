@@ -41,10 +41,10 @@ sample = sampler(x) # is 10x1 vector --- random realization at x
 ```
 ### Samples from torus, projective space and sphere
 
-<p float="left">
-  <img src="/plots/torus_heat_kernel_sample_colors.png" width="333" />
-  <img src="/plots/projective_space_heat_kernel_sample_colors.png" width="333" /> 
-  <img src="/plots/sphere_heat_kernel_sample_colors.png" width="333" />
+<p align="center">
+  <img src="/plots/torus_heat_kernel_sample_colors.png" width="250" />
+  <img src="/plots/projective_space_heat_kernel_sample_colors.png" width="250" /> 
+  <img src="/plots/sphere_heat_kernel_sample_colors.png" width="250" />
 </p>
 
 ### Correspondence between spaces and kernels/samplers
