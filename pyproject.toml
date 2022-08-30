@@ -9,7 +9,9 @@ description = "Heat and Matern kernels on Lie groups and their homogeneous space
 readme = "README.md"
 authors = [
     { name = "Inskander Azangulov" },
-    { name = "Andrei Smolensky", email = "andrei.smolensky@gmail.com" }
+    { name = "Andrei Smolensky", email = "andrei.smolensky@gmail.com" },
+    { name = "Alexander Terenin" },
+    { name = "Viacheslav Borovitskiy"}
 ]
 dependencies = [
     "numpy~=1.22.4",
