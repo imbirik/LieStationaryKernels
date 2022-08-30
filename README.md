@@ -1,10 +1,18 @@
-## Stationary Kernels and Gaussian Processes on Lie Groups and their Homogeneous Spaces
-
-`LieStationaryKernels` is a library that implements calculations with heat and Matérn kernels
-on compact Lie groups and their homogeneous spaces as well as non-compact symmetric spaces.
+Stationary Kernels and Gaussian Processes  
+on Lie Groups and their Homogeneous Spaces
+==========================================
 
 This is a prototypical implementation for the methods described in `Stationary Kernels and Gaussian Processes on Lie Groups
 and their Homogeneous Spaces`([part I](link), [part II](link)), a two-part series of papers by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.
+
+The library features (approximate) computational techniques for heat and Matérn kernels on compact Lie groups, their homogeneous spaces and non-compact symmetric spaces. It allows approximate kernel evaluation and differentiation, with positive semidefiniteness guarantees, and efficient sampling of the corresponding Gaussian process.
+
+**Example.** Samples from a Gaussian process with heat kernel covariance on the torus $\mathbb{T}^2$, on the real projective plane $\mathrm{RP}^2$ and on the sphere $\mathbb{S}^2$:
+<p align="center">
+  <img src="/plots/torus_heat_kernel_sample_colors.png" width="250" />
+  <img src="/plots/projective_space_heat_kernel_sample_colors.png" width="250" /> 
+  <img src="/plots/sphere_heat_kernel_sample_colors.png" width="250" />
+</p>
 
 ## Spaces of interest
 The following spaces are implemented:
@@ -16,8 +24,6 @@ The following spaces are implemented:
 - Symmetric positive-definite matrices `SPD(n)`.
 
 ## Showcase
-
-Alas, it's only the code for now...
 
 ```python
 from lie_stationary_kernels.spaces import Grassmanian
@@ -39,13 +45,6 @@ y = space.rand(20)
 cov = kernel(x,y) # is 10x20 matrix --- covariance matrix 
 sample = sampler(x) # is 10x1 vector --- random realization at x
 ```
-### Samples from torus, projective space and sphere
-
-<p align="center">
-  <img src="/plots/torus_heat_kernel_sample_colors.png" width="250" />
-  <img src="/plots/projective_space_heat_kernel_sample_colors.png" width="250" /> 
-  <img src="/plots/sphere_heat_kernel_sample_colors.png" width="250" />
-</p>
 
 ### Correspondence between spaces and kernels/samplers
 Kernels:
