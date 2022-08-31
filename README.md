@@ -26,13 +26,13 @@ The following spaces are implemented:
 ## Showcase
 
 ```python
-from lie_stationary_kernels.spaces import Grassmanian
+from lie_stationary_kernels.spaces import Grassmannian
 from lie_stationary_kernels.spectral_kernel import RandomPhaseKernel
 from lie_stationary_kernels.spectral_measure import MaternSpectralMeasure
 from lie_stationary_kernels.prior_approximation import RandomPhaseApproximation
 
 # First of all let us choose a space
-space = Grassmanian(n, m)
+space = Grassmannian(n, m)
 # Then select a spectral measure
 measure = MaternSpectralMeasure(space.dim, lengthscale, nu, variance)
 # Finally we create kernel and sampler
