@@ -3,7 +3,7 @@ on Lie Groups and their Homogeneous Spaces
 ==========================================
 
 This is a prototypical implementation for the methods described in `Stationary Kernels and Gaussian Processes on Lie Groups
-and their Homogeneous Spaces`([part I](link), [part II](link)), a two-part series of papers by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.
+and their Homogeneous Spaces`([part I](https://arxiv.org/abs/2208.14960), [part II](link)), a two-part series of papers by I. Azangulov, A. Smolensky, A. Terenin and V. Borovitskiy.
 
 The library features (approximate) computational techniques for heat and Matérn kernels on compact Lie groups, their homogeneous spaces and non-compact symmetric spaces. It allows approximate kernel evaluation and differentiation, with positive semidefiniteness guarantees, and efficient sampling of the corresponding Gaussian process.
 
