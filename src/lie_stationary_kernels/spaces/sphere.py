@@ -143,7 +143,11 @@ class NormalizedSphericalFunctions(torch.nn.Module):
 class ZonalSphericalFunction(torch.nn.Module):
     def __init__(self, dim, n):
         super().__init__()
-        self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
+        if n < 25:
+            self.gegenbauer = GegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
+        else:
+            self.gegenbauer = NewGegenbauerPolynomials(alpha=(dim - 1) / 2., n=n)
+
         self.forward = vmap(self._forward)
 
         if n == 0:
@@ -187,3 +191,18 @@ class GegenbauerPolynomials(torch.nn.Module):
         # returns \sum c_i * x^i
         x_pows = torch.pow(x, self.powers)
         return torch.dot(x_pows, self.coefficients)
+
+
+class NewGegenbauerPolynomials(torch.nn.Module):
+    def __init__(self, alpha, n):
+        super().__init__()
+        self.alpha = alpha
+        self.n = n
+
+    def forward(self, x):
+        # returns c_alpha^n(x)
+        C_alpha = [0, 2*self.alpha*x]
+        for m in range(2, self.n + 1):
+            c_alpha_m = (C_alpha[-1] * 2*x * (m + self.alpha-1) - (m + 2 * self.alpha - 2)*C_alpha[-2])/m
+            C_alpha.append(c_alpha_m)
+        return C_alpha[-1]
