@@ -1,11 +1,11 @@
 #%%
 
-from src.spaces import Grassmannian, HyperbolicSpace, SO, \
+from lie_stationary_kernels.spaces import Grassmannian, HyperbolicSpace, SO, \
     SymmetricPositiveDefiniteMatrices, Sphere, SU
-from src.spectral_kernel import EigenbasisSumKernel, RandomFourierFeatureKernel, RandomPhaseKernel
-from src.prior_approximation import RandomPhaseApproximation, RandomFourierApproximation
-from src.lie_geom_kernel.spectral_measure import MaternSpectralMeasure
-from src.space import CompactLieGroup, HomogeneousSpace
+from lie_stationary_kernels.spectral_kernel import EigenbasisSumKernel, RandomFourierFeatureKernel, RandomPhaseKernel
+from lie_stationary_kernels.prior_approximation import RandomPhaseApproximation, RandomFourierApproximation
+from lie_stationary_kernels.spectral_measure import MaternSpectralMeasure
+from lie_stationary_kernels.space import CompactLieGroup, CompactHomogeneousSpace
 from examples.gpr_model import ExactGPModel, train
 from torch.nn import MSELoss
 import gpytorch
@@ -34,7 +34,7 @@ def main(space, n, m):
         _kernel = EigenbasisSumKernel(_measure, space)
         f = RandomPhaseApproximation(_kernel)
 
-    elif isinstance(space, HomogeneousSpace):
+    elif isinstance(space, CompactHomogeneousSpace):
         _kernel = RandomPhaseKernel(_measure, space, phase_order=25)
         f = RandomPhaseApproximation(_kernel)
 
@@ -61,7 +61,7 @@ def main(space, n, m):
 
     if isinstance(space, CompactLieGroup) or isinstance(space, Sphere):
         kernel = EigenbasisSumKernel(measure, space)
-    elif isinstance(space, HomogeneousSpace):
+    elif isinstance(space, CompactHomogeneousSpace):
         kernel = RandomPhaseKernel(measure, space, phase_order=25)
     else:
         kernel = RandomFourierFeatureKernel(measure, space)
@@ -74,7 +74,7 @@ def main(space, n, m):
     # train model
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
     model = ExactGPModel(train_x, train_y, likelihood, kernel, space, point_shape=(n, m)).to(device=device)
-    train(model, train_x, train_y, 1500, 500, lr=0.1)
+    train(model, train_x, train_y, 1000, 500, lr=0.1)
 
     model.eval()
     with torch.no_grad():

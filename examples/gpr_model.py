@@ -1,7 +1,7 @@
 import gpytorch
 import torch
 from torch.optim.lr_scheduler import StepLR
-from src.spaces import Grassmannian, OrientedGrassmannian, HyperbolicSpace, SO, \
+from lie_stationary_kernels.spaces import Grassmannian, OrientedGrassmannian, HyperbolicSpace, SO, \
     SymmetricPositiveDefiniteMatrices, Sphere, Stiefel, SU
 dtype = torch.float64
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -75,7 +75,12 @@ def train(model: ExactGPModel, train_x, train_y, training_iter=900, lr_scheduler
                 # variance = (model.variance * model.covar_module.measure.variance).item()
                 variance = model.covar_module.measure.variance.item()
             # mean = model.mean.item()
-            mean = model.mean_module.constant.item()
+            if type(model.mean_module) is gpytorch.means.ConstantMean:
+                mean = model.mean_module.constant.item()
+
+            if type(model.mean_module) is gpytorch.means.ZeroMean:
+                mean = 0
+
             #mean = 0
             print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f variance: %.3f   noise: %.3f, mean: %3f' % (
                 i + 1, training_iter, loss.item(),
