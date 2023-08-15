@@ -71,7 +71,7 @@ Samplers:
 
 4. Install the library by running
 ```
-pip install git+https://github.com/imbirik/LieStationaryKernel.git
+pip install git+https://github.com/imbirik/LieStationaryKernels.git
 ```
 
 5. To install in developer mode, clone the repository, enter its directory and run
